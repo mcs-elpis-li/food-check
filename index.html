@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Food Texture Checker 食物质地检查器</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f2ec; --card: #ffffff; --text: #2a2a2a; --muted: #6b6b6b;
+    --accent: #0b7a4b; --accent-dark: #08603a;
+    --green: #0b7a4b; --green-bg: #e2f3e9;
+    --orange: #b45309; --orange-bg: #fdf0dd;
+    --red: #b91c1c;   --red-bg: #fde8e8;
+    --border: #d8d2c4;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--text);
+    font-size: 18px; line-height: 1.5; padding-bottom: 90px;
+  }
+  header {
+    background: var(--accent); color: #fff; padding: 14px 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+  header h1 { font-size: 20px; font-weight: 700; }
+  header .sub { font-size: 13px; opacity: .9; }
+  .gear {
+    background: rgba(255,255,255,.2); border: none; color: #fff;
+    font-size: 22px; width: 44px; height: 44px; border-radius: 10px; cursor: pointer;
+  }
+  main { padding: 12px; max-width: 640px; margin: 0 auto; }
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px; margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+  }
+  .camera-box { position: relative; background: #111; border-radius: 14px; overflow: hidden; aspect-ratio: 3/4; max-height: 62vh; }
+  .camera-box video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .camera-box.off { display: flex; align-items: center; justify-content: center; color: #aaa; flex-direction: column; gap: 8px; font-size: 15px; text-align: center; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    border: none; border-radius: 12px; padding: 14px 18px;
+    font-size: 18px; font-weight: 600; cursor: pointer; min-height: 52px;
+  }
+  .btn:active { transform: scale(.98); }
+  .btn-primary { background: var(--accent); color: #fff; width: 100%; }
+  .btn-secondary { background: #e9e4d8; color: var(--text); width: 100%; }
+  .btn-row { display: flex; gap: 10px; margin-top: 10px; }
+  .btn-row .btn { flex: 1; }
+  .label { font-size: 15px; font-weight: 600; color: var(--muted); margin: 4px 0 6px; }
+  .iddsi { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .iddsi button {
+    padding: 12px 8px; border-radius: 10px; border: 2px solid var(--border);
+    background: #fff; font-size: 15px; font-weight: 600; cursor: pointer; line-height: 1.3;
+  }
+  .iddsi button small { display: block; font-weight: 400; font-size: 12px; color: var(--muted); }
+  .iddsi button.active { border-color: var(--accent); background: var(--green-bg); color: var(--accent-dark); }
+  #result { font-size: 17px; }
+  .verdict {
+    padding: 14px; border-radius: 12px; font-size: 19px; font-weight: 700; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .v-green { background: var(--green-bg); color: var(--green); }
+  .v-orange { background: var(--orange-bg); color: var(--orange); }
+  .v-red { background: var(--red-bg); color: var(--red); }
+  .item { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
+  .item .name { font-weight: 700; font-size: 17px; }
+  .item .zh { color: var(--muted); font-size: 15px; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; margin-left: 6px; vertical-align: middle; }
+  .b-green { background: var(--green-bg); color: var(--green); }
+  .b-orange { background: var(--orange-bg); color: var(--orange); }
+  .b-red { background: var(--red-bg); color: var(--red); }
+  .item .detail { margin-top: 6px; font-size: 15px; color: #444; }
+  .item .detail .zh { color: var(--muted); }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  .status { font-size: 15px; color: var(--accent-dark); background: var(--green-bg); border-radius: 10px; padding: 10px 12px; margin-top: 10px; display: none; }
+  .status.show { display: block; }
+  .status.err { background: var(--red-bg); color: var(--red); }
+  pre.raw { white-space: pre-wrap; word-break: break-word; font-size: 15px; font-family: inherit; }
+  .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
+  .modal.show { display: flex; }
+  .modal .inner { background: #fff; border-radius: 14px; padding: 18px; width: 100%; max-width: 480px; }
+  .modal h2 { font-size: 18px; margin-bottom: 12px; }
+  .modal label { display: block; font-size: 14px; font-weight: 600; margin: 10px 0 4px; }
+  .modal input { width: 100%; padding: 12px; font-size: 16px; border: 1px solid var(--border); border-radius: 10px; }
+  .privacy { font-size: 13px; color: var(--muted); margin-top: 8px; }
+  .disclaimer { font-size: 13px; color: var(--red); margin-top: 10px; font-weight: 600; }
+  .hidden { display: none !important; }
+  #previewImg { width: 100%; border-radius: 10px; display: block; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Food Texture Checker</h1>
+    <div class="sub">食物质地检查 · 吞咽友好</div>
+  </div>
+  <button class="gear" id="btnSettings" title="Settings 设置">⚙</button>
+</header>
+<main>
+  <!-- Diet level selector -->
+  <div class="card">
+    <div class="label">Diet level 饮食级别 (IDDSI)</div>
+    <div class="iddsi" id="iddsi">
+      <button data-level="liquid">Liquid 流质<small>Drinks only</small></button>
+      <button data-level="puree">Puréed 糊状<small>Very smooth</small></button>
+      <button data-level="minced">Minced &amp; Moist 碎湿状<small>Soft lumps</small></button>
+      <button data-level="soft">Soft 软食<small>Soft solids</small></button>
+    </div>
+  </div>
+
+  <!-- Camera -->
+  <div class="camera-box off" id="camBox">
+    <video id="video" playsinline autoplay muted class="hidden"></video>
+    <div id="camPlaceholder">📷<br>Camera is off<br>相机未开启</div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-secondary" id="btnCam">Camera 相机</button>
+    <button class="btn btn-primary" id="btnCapture" disabled>📸 Check food 检查食物</button>
+  </div>
+  <div class="hint">Tip: make sure all dishes are in frame with a plain background. 提示：请将整盘食物放入画面，背景简洁更容易识别。</div>
+  <div class="status" id="status"></div>
+
+  <!-- Result -->
+  <div class="card hidden" id="resultCard">
+    <img id="previewImg" alt="captured food">
+    <div id="result"></div>
+    <div class="disclaimer">⚠️ This is a visual aid only. Always follow your doctor or speech therapist's advice. 此结果仅供参考，请遵从医生或言语治疗师的建议。</div>
+  </div>
+</main>
+
+<!-- Settings modal -->
+<div class="modal" id="settingsModal">
+  <div class="inner">
+    <h2>Settings 设置</h2>
+    <label>API Key 密钥</label>
+    <input type="password" id="inpKey" placeholder="sk-...">
+    <label>Endpoint 端点 (base URL)</label>
+    <input type="url" id="inpEndpoint" placeholder="https://api.openai.com/v1">
+    <label>Model 模型</label>
+    <input type="text" id="inpModel" placeholder="gpt-4o-mini">
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="btnCloseSettings">Cancel 取消</button>
+      <button class="btn btn-primary" id="btnSaveSettings">Save 保存</button>
+    </div>
+    <div class="privacy">Your key is stored only on this device (localStorage) and sent only to the endpoint above. 密钥仅保存在本机，只发送到上述端点。</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- Config (localStorage) ----------
+  var CFG_KEY = 'ftc_cfg_v1';
+  var DEFAULTS = { key: '', endpoint: 'https://office-3080ti-8080.carryai.co/v1', model: 'qwen3.8-27b' };
+  var cfg = Object.assign({}, DEFAULTS);
+  try { Object.assign(cfg, JSON.parse(localStorage.getItem(CFG_KEY) || '{}')); } catch (e) {}
+  function saveCfg() { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
+
+  // ---------- IDDSI ----------
+  var LEVELS = {
+    liquid: { en: 'Liquid (IDDSI 0-2: thin, slightly thick, moderately thick drinks)',
+              zh: '流质（IDDSI 0-2：稀薄、微稠、中稠饮品）' },
+    puree:  { en: 'Puréed (IDDSI 4: extremely thick, smooth, no lumps, holds shape)',
+              zh: '糊状（IDDSI 4：极度浓稠、幼滑无颗粒、可成型）' },
+    minced: { en: 'Minced & Moist (IDDSI 5: soft moist lumps <=4mm, easy to mash with tongue)',
+              zh: '碎湿状（IDDSI 5：柔软湿润小块≤4毫米，舌头可压碎）' },
+    soft:   { en: 'Soft (IDDSI 6-7: soft regular, chewable, fork-pressure test soft)',
+              zh: '软食（IDDSI 6-7：软质常规，可咀嚼，叉压测试为软）' }
+  };
+  var currentLevel = 'soft';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var video = $('video'), camBox = $('camBox'), camPlaceholder = $('camPlaceholder');
+  var btnCam = $('btnCam'), btnCapture = $('btnCapture'), statusEl = $('status');
+  var stream = null, busy = false;
+
+  // ---------- IDDSI UI ----------
+  $('iddsi').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    document.querySelectorAll('#iddsi button').forEach(function (x) { x.classList.remove('active'); });
+    b.classList.add('active'); currentLevel = b.getAttribute('data-level');
+  });
+  document.querySelector('#iddsi button[data-level="soft"]').classList.add('active');
+
+  // ---------- Settings ----------
+  $('btnSettings').onclick = function () {
+    $('inpKey').value = cfg.key; $('inpEndpoint').value = cfg.endpoint; $('inpModel').value = cfg.model;
+    $('settingsModal').classList.add('show');
+  };
+  $('btnCloseSettings').onclick = function () { $('settingsModal').classList.remove('show'); };
+  $('btnSaveSettings').onclick = function () {
+    cfg.key = $('inpKey').value.trim();
+    cfg.endpoint = $('inpEndpoint').value.trim() || DEFAULTS.endpoint;
+    cfg.model = $('inpModel').value.trim() || DEFAULTS.model;
+    saveCfg(); $('settingsModal').classList.remove('show');
+    showStatus('Saved. 已保存。', false);
+  };
+
+  // ---------- Status ----------
+  var statusTimer = null;
+  function showStatus(msg, isErr) {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle('err', !!isErr);
+    statusEl.classList.add('show');
+    clearTimeout(statusTimer);
+    if (!isErr) statusTimer = setTimeout(function () { statusEl.classList.remove('show'); }, 4000);
+  }
+
+  // ---------- Camera ----------
+  async function startCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showStatus('Camera not supported in this browser. 此浏览器不支持相机。', true); return;
+    }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1920 } },
+        audio: false
+      });
+      video.srcObject = stream;
+      await video.play();
+      video.classList.remove('hidden');
+      camBox.classList.remove('off'); camPlaceholder.style.display = 'none';
+      btnCam.textContent = 'Stop camera 关闭相机';
+      btnCapture.disabled = false;
+    } catch (err) {
+      showStatus('Camera error: ' + err.message + ' 相机错误。', true);
+    }
+  }
+  function stopCamera() {
+    if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+    video.classList.add('hidden'); camBox.classList.add('off');
+    camPlaceholder.style.display = ''; btnCam.textContent = 'Camera 相机';
+    btnCapture.disabled = true;
+  }
+  btnCam.onclick = function () { stream ? stopCamera() : startCamera(); };
+
+  // ---------- Capture + resize (<=1000px) ----------
+  function captureAndResize() {
+    var vw = video.videoWidth, vh = video.videoHeight;
+    if (!vw || !vh) { showStatus('Camera not ready. 相机未就绪。', true); return null; }
+    var MAX = 1000;
+    var scale = Math.min(1, MAX / Math.max(vw, vh)); // never upscale
+    var w = Math.round(vw * scale), h = Math.round(vh * scale);
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    var ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(video, 0, 0, w, h);
+    // JPEG ~0.85: good quality, small payload
+    return c.toDataURL('image/jpeg', 0.85);
+  }
+
+  $('btnCapture').onclick = function () {
+    if (busy) return;
+    var dataUrl = captureAndResize();
+    if (!dataUrl) return;
+    analyze(dataUrl);
+  };
+
+  // ---------- VLM prompt ----------
+  function buildMessages(dataUrl, level) {
+    var lv = LEVELS[level];
+    var sys = 'You are a dysphagia food texture advisor for elderly people with swallowing difficulty. '
+      + 'You are NOT a doctor; give visual-texture guidance only. '
+      + "The person's diet level: " + lv.en + ' / ' + lv.zh + '. '
+      + 'Analyze the food in the image. Identify each distinct dish/ingredient. '
+      + 'For each, estimate hardness/texture (hard, firm, soft, mushy, liquid, mixed with hard bits...), '
+      + 'chewing/swallowing risk (e.g. dry, crumbly, sticky, stringy, mixed texture, hard pieces, skin, seeds, bones), '
+      + 'and a verdict. Be conservative: when unsure, downgrade to caution. '
+      + 'IMPORTANT: reply with ONLY a JSON object, no markdown fences, matching exactly: '
+      + '{"dish":"short English dish name","dish_zh":"中文菜名",'
+      + '"overall":"suitable|caution|not_suitable",'
+      + '"overall_en":"one short sentence","overall_zh":"一句中文总结",'
+      + '"items":[{"name":"ingredient (en)","name_zh":"食材(中文)",'
+      + '"texture":"texture description (en)","texture_zh":"质地描述(中文)",'
+      + '"risk":"risk note (en)","risk_zh":"风险说明(中文)",'
+      + '"verdict":"suitable|caution|not_suitable"}]}';
+    return [
+      { role: 'system', content: sys },
+      { role: 'user', content: [
+          { type: 'text', text: 'Diet level 饮食级别: ' + lv.en + ' / ' + lv.zh + '. Analyze this food photo for swallowing safety. Reply with the JSON only.' },
+          { type: 'image_url', image_url: { url: dataUrl } }
+        ] }
+    ];
+  }
+
+  // ---------- VLM call ----------
+  async function analyze(dataUrl) {
+    busy = true; btnCapture.disabled = true;
+    btnCapture.textContent = 'Analyzing… 分析中…';
+    showStatus('Analyzing… 正在分析…');
+    try {
+      var url = cfg.endpoint.replace(/\/+$/, '') + '/chat/completions';
+      var headers = { 'Content-Type': 'application/json' };
+      if (cfg.key) headers['Authorization'] = 'Bearer ' + cfg.key;
+      var res = await fetch(url, {
+        method: 'POST',
+        headers: headers,
+        body: JSON.stringify({
+          model: cfg.model,
+          messages: buildMessages(dataUrl, currentLevel),
+          max_tokens: 1200,
+          temperature: 0.2
+        })
+      });
+      if (!res.ok) {
+        var t = await res.text();
+        throw new Error('API ' + res.status + ': ' + t.slice(0, 200));
+      }
+      var data = await res.json();
+      var content = data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '';
+      renderResult(content, dataUrl);
+    } catch (err) {
+      showStatus('Analysis failed 分析失败: ' + err.message, true);
+    } finally {
+      busy = false; btnCapture.disabled = !stream;
+      btnCapture.textContent = '📸 Check food 检查食物';
+    }
+  }
+
+  // ---------- Parse + render ----------
+  function extractJson(text) {
+    var m = text.match(/\{[\s\S]*\}/); // tolerant: first { to last }
+    if (!m) return null;
+    try { return JSON.parse(m[0]); } catch (e) { return null; }
+  }
+  var VERDICT = {
+    suitable:     { en: 'Suitable', zh: '适合', cls: 'green' },
+    caution:      { en: 'Caution', zh: '小心', cls: 'orange' },
+    not_suitable: { en: 'Not suitable', zh: '不适合', cls: 'red' }
+  };
+  function esc(s) { var d = document.createElement('div'); d.textContent = String(s == null ? '' : s); return d.innerHTML; }
+
+  function renderResult(content, dataUrl) {
+    var j = extractJson(content);
+    var html = '';
+    $('previewImg').src = dataUrl;
+    if (j && j.items) {
+      var ov = VERDICT[j.overall] || VERDICT.caution;
+      html += '<div class="verdict v-' + ov.cls + '">' + (ov.cls === 'green' ? '✅' : ov.cls === 'orange' ? '⚠️' : '🚫')
+        + ' ' + esc(ov.en) + ' / ' + esc(ov.zh) + '</div>'
+        + '<div style="margin-bottom:12px">' + esc(j.overall_en || '') + '<br><span style="color:var(--muted)">' + esc(j.overall_zh || '') + '</span></div>'
+        + '<div class="label">Ingredients 食材明细</div>';
+      (j.items || []).forEach(function (it) {
+        var v = VERDICT[it.verdict] || VERDICT.caution;
+        html += '<div class="item">'
+          + '<div class="name">' + esc(it.name || '') + '<span class="badge b-' + v.cls + '">' + esc(v.en) + ' / ' + esc(v.zh) + '</span></div>'
+          + '<div class="zh">' + esc(it.name_zh || '') + '</div>'
+          + (it.texture ? '<div class="detail">Texture 质地: ' + esc(it.texture) + '<br><span class="zh">' + esc(it.texture_zh || '') + '</span></div>' : '')
+          + (it.risk ? '<div class="detail">Risk 风险: ' + esc(it.risk) + '<br><span class="zh">' + esc(it.risk_zh || '') + '</span></div>' : '')
+          + '</div>';
+      });
+    } else {
+      html += '<pre class="raw">' + esc(content) + '</pre>';
+    }
+    $('result').innerHTML = html;
+    $('resultCard').classList.remove('hidden');
+    $('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    showStatus('Done. 分析完成。');
+  }
+
+  // ---------- Cleanup ----------
+  window.addEventListener('pagehide', stopCamera);
+})();
+</script>
+</body>
+</html>
