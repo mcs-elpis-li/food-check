@@ -155,7 +155,7 @@
 
   // ---------- Config (localStorage) ----------
   var CFG_KEY = 'ftc_cfg_v1';
-  var DEFAULTS = { key: '', endpoint: 'https://office-3080ti-8080.carryai.co/v1', model: 'qwen3.8-27b' };
+  var DEFAULTS = { key: '', endpoint: 'https://abcinasdf/v1', model: 'qwen3.8-27b' };
   var cfg = Object.assign({}, DEFAULTS);
   try { Object.assign(cfg, JSON.parse(localStorage.getItem(CFG_KEY) || '{}')); } catch (e) {}
   function saveCfg() { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
