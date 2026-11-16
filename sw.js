@@ -1,14 +1,14 @@
 /* Food Check service worker: network-first pages, cache-first static assets. */
-const CACHE = 'food-check-v1';
+const CACHE = 'food-check-v2';
 const ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icon.svg',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/icon-maskable-512.png',
-  '/apple-touch-icon.png'
+  '/icon.svg?v=2',
+  '/icon-192.png?v=2',
+  '/icon-512.png?v=2',
+  '/icon-maskable-512.png?v=2',
+  '/apple-touch-icon.png?v=2'
 ];
 
 self.addEventListener('install', (event) => {

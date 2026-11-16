@@ -9,9 +9,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Food Check">
 <link rel="manifest" href="/manifest.json">
-<link rel="icon" type="image/svg+xml" href="/icon.svg">
-<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
-<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/svg+xml" href="/icon.svg?v=2">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=2">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2">
 <title>Food Texture Checker 食物質地檢查器</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -94,7 +94,11 @@
   .b-red { background: var(--red-bg); color: var(--red); }
   .item .detail { margin-top: 8px; font-size: 17px; color: #4a3040; }
   .item .detail .zh { color: var(--muted); font-size: 16px; }
-  .hint { font-size: 15px; color: var(--muted); margin-top: 10px; }
+  .hint {
+    font-size: 20px; color: var(--text); background: var(--pink-soft);
+    border-left: 5px solid var(--accent); border-radius: 12px;
+    padding: 12px 14px; margin-top: 12px; line-height: 1.5; font-weight: 600;
+  }
   .status { font-size: 17px; color: var(--accent-dark); background: var(--pink-soft); border-radius: 12px; padding: 12px 14px; margin-top: 10px; display: none; }
   .status.show { display: block; }
   .status.err { background: var(--red-bg); color: var(--red); }
@@ -121,7 +125,7 @@
 <body>
 <header>
   <div class="brand">
-    <img src="/icon-192.png" alt="" class="app-icon">
+    <img src="/icon-192.png?v=2" alt="" class="app-icon">
     <div>
       <h1>Food Texture Checker</h1>
       <div class="sub">食物質地檢查 · 吞嚥友好</div>

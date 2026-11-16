@@ -17,7 +17,7 @@ Live site: **https://food-check.elpis.li/**
 - Rear-camera capture; the camera stops and hides after a photo until **Open camera** is tapped.
 - Browser text-to-speech reads the verdict, ingredient verdicts, and safer-food suggestions in
   English and Traditional Chinese, with Read and Stop buttons.
-- Installable web app (PWA) with a pink heart icon, manifest, and service worker.
+- Installable web app (PWA) with a pink food-bowl icon, manifest, and service worker.
 - Server-side image preprocessing: validation, EXIF orientation, downscale to
   1000x1000 px max, transparency flattening and JPEG re-encoding.
 - VLM JSON response normalised by the backend, with bilingual English and Chinese results.
@@ -75,13 +75,14 @@ stay on the server.
 
 ## Web app, camera and speech
 
-- **Installable PWA.** `manifest.json` sets a pink theme, standalone display and the heart
+- **Installable PWA.** `manifest.json` sets a pink theme, standalone display and the food-bowl
   icons. On Android Chrome use **Install app**; on iOS Safari use **Share -> Add to Home
   Screen**. HTTPS is required (the site already uses it).
 - **Service worker.** Pages are network-first, static assets are cache-first, and
   `/vlm-process.php` is never cached. Bump `CACHE` in `sw.js` when changing shell assets.
-- **Accessibility.** Pink theme, 20px base text, 60px buttons, high contrast, and browser
-  zoom is enabled. The result card uses `aria-live="polite"`.
+- **Accessibility.** Pink theme, 20px base text, a 20px high-contrast tip callout, 60px
+  buttons, high contrast, and browser zoom is enabled. The result card uses
+  `aria-live="polite"`.
 - **Camera.** The camera box is hidden while closed. After **Check food**, the stream stops,
   the camera box hides, and the captured photo appears in the result card. **Check food**
   stays disabled until **Open camera** is tapped again.
