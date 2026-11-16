@@ -160,24 +160,22 @@ while still protecting programmatic access.
 
 ### Model notes
 
-The configured endpoint (`office-3080ti-8080.carryai.co`, model `qwen3.8-27b`) now
-accepts images. The test request returned a valid JSON assessment with a 1000x750 resized
-image.
+The configured primary vision model now accepts images. Test requests returned valid JSON
+assessments with a 1000x750 resized image.
 
-The server limits output to **2048 tokens**. The backend therefore sets `max_tokens` to
-2048 and disables Qwen3 reasoning tokens with
+The primary provider limits output to **2048 tokens**. The backend therefore sets
+`max_tokens` to 2048 and disables Qwen3 reasoning tokens with
 `chat_template_kwargs: {"enable_thinking": false}` (`VLM_DISABLE_THINKING=1`). This keeps
 the answer from being truncated while leaving the full budget for the JSON result. Set
 `VLM_DISABLE_THINKING=0` for a model that does not support that option.
 
-The fallback endpoint (`https://opencode.ai/zen/go/v1`, model `minimax-m3.1-flash`) is
-also verified as a vision model: it correctly identified a red test image. OpenCode Zen
-requires an `x-opencode-session` header, so the backend sends a stable per-client session
-ID for fallback requests. The fallback is tried automatically when the primary fails,
-times out, or rejects images.
+The configured fallback model is also verified as a vision model: it correctly identified
+a red test image. The fallback provider requires an `x-opencode-session` header, so the
+backend sends a stable per-client session ID for fallback requests. The fallback is tried
+automatically when the primary fails, times out, or rejects images.
 
-`deepseek-v4.1-flash` on the same endpoint is also verified as a vision model. To use it,
-set `VLM_FALLBACK_MODEL=deepseek-v4.1-flash`; no other change is needed.
+`deepseek-v4.1-flash` is also verified as a vision model. To use it, set
+`VLM_FALLBACK_MODEL=deepseek-v4.1-flash`; no other change is needed.
 
 If every provider fails or rejects images, the backend returns the last upstream error.
 
@@ -277,7 +275,7 @@ Each `vlm.log` entry includes:
 Example (truncated):
 
 ```json
-{"datetime":"2026-11-16T15:07:55+00:00","source":"camera","level":"soft","status":"success","model":"qwen3.8-27b","provider":"primary","api":"https://office-3080ti-8080.carryai.co/v1","primary_skipped":false,"duration_ms":5400,"vlm_ms":5346,"tokens":{"prompt":1515,"completion":612,"total":2127,"reasoning":0,"cached":0},"tokens_per_second":114.5,"is_food":true,"is_edible":true,"overall":"caution","image":{"path":"/var/tmp/food-check/uploads/20261116_150755_aa17a4fc5443.jpg","width":960,"height":870,"bytes":138988},"attempts":[{"provider":"primary","model":"qwen3.8-27b","ms":5346,"ok":true}],"prompt":"...","result":{...},"raw":"..."}
+{"datetime":"2026-11-16T15:07:55+00:00","source":"camera","level":"soft","status":"success","model":"qwen3.8-27b","provider":"primary","api":"https://primary-vlm.example.com/v1","primary_skipped":false,"duration_ms":5400,"vlm_ms":5346,"tokens":{"prompt":1515,"completion":612,"total":2127,"reasoning":0,"cached":0},"tokens_per_second":114.5,"is_food":true,"is_edible":true,"overall":"caution","image":{"path":"/var/tmp/food-check/uploads/20261116_150755_aa17a4fc5443.jpg","width":960,"height":870,"bytes":138988},"attempts":[{"provider":"primary","model":"qwen3.8-27b","ms":5346,"ok":true}],"prompt":"...","result":{...},"raw":"..."}
 ```
 
 Inspect the latest entries:
