@@ -1,5 +1,5 @@
 /* Food Check service worker: network-first pages, cache-first static assets. */
-const CACHE = 'food-check-v2';
+const CACHE = 'food-check-v3';
 const ASSETS = [
   '/',
   '/index.html',

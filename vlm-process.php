@@ -88,7 +88,7 @@ function fc_build_messages(string $level): array
     $lv = $levels[$level];
 
     $system = 'You are a dysphagia food texture advisor for elderly people with swallowing difficulty. '
-        . 'You are NOT a doctor; give visual-texture guidance only. '
+        . 'You are NOT a doctor; give general visual-texture and dietary information only, never medical advice. '
         . "The person's diet level: " . $lv['en'] . ' / ' . $lv['zh'] . '. '
         . 'First decide whether the image shows food or drink ("is_food") and whether it appears safe and edible ("is_edible"). '
         . 'Set is_food to false for people, animals, objects, packaging-only images, or scenes without food or drink. '
@@ -96,6 +96,14 @@ function fc_build_messages(string $level): array
         . 'A food that is merely unsuitable for this diet is still edible; do not set is_edible to false for that reason. '
         . 'When is_food or is_edible is false, set overall to "not_suitable" and write a clear warning in warning_en and warning_zh. '
         . 'Otherwise analyze the food in the image. Identify each distinct dish/ingredient. '
+        . 'For each item, assign exactly one category key: fish, meat, pork, poultry, seafood, vegetable, fruit, grain, dairy, egg, legume, nut, or other. '
+        . 'List possible physical hazards using only these keys: bones, small_bones, fish_bones, shell_fragments, hard_fragments, seeds, skin, cartilage, pits, spines, scales, nuts. '
+        . 'List possible allergens using only these keys: milk, egg, fish, shellfish, peanut, tree_nut, soy, wheat, sesame. '
+        . 'Only include hazards and allergens that are plausible from the photo; they are possibilities, not confirmed. Use empty arrays when none are plausible. '
+        . 'Do not invent ingredients or allergens. Return at most 8 items, with at most 4 hazards and 4 allergens per item. '
+        . 'Add general, non-diagnostic health notes for common long-term conditions: diabetes, heart_disease, stroke, kidney_disease, liver_disease, hypertension, high_cholesterol, gout. '
+        . 'Only include a condition when the visible ingredients or cooking style suggest a plausible concern. Use level "caution" or "avoid"; use "unknown" only when the photo is insufficient. '
+        . 'Omit conditions with no concern. Use may or could, never diagnose. Return at most 5 notes with short reason_en and reason_zh. '
         . 'For each, estimate hardness/texture (hard, firm, soft, mushy, liquid, mixed with hard bits...), '
         . 'chewing/swallowing risk (e.g. dry, crumbly, sticky, stringy, mixed texture, hard pieces, skin, seeds, bones), '
         . 'and a verdict. Be conservative: when unsure, downgrade to caution. '
@@ -112,7 +120,10 @@ function fc_build_messages(string $level): array
         . '"overall_en":"one short sentence","overall_zh":"一句中文總結",'
         . '"warning_en":"empty when food is edible, otherwise the warning","warning_zh":"食物可食用時留空，否則填寫警告",'
         . '"modifications":[{"en":"short action","zh":"簡短建議"}],'
+        . '"health_notes":[{"condition":"diabetes|heart_disease|stroke|kidney_disease|liver_disease|hypertension|high_cholesterol|gout","level":"caution|avoid|unknown","reason_en":"short reason","reason_zh":"簡短原因"}],'
         . '"items":[{"name":"ingredient (en)","name_zh":"食材(中文)",'
+        . '"category":"fish|meat|pork|poultry|seafood|vegetable|fruit|grain|dairy|egg|legume|nut|other",'
+        . '"hazards":["bones","skin"],"allergens":["fish"],'
         . '"texture":"texture description (en)","texture_zh":"質地描述(中文)",'
         . '"risk":"risk note (en)","risk_zh":"風險說明(中文)",'
         . '"verdict":"suitable|caution|not_suitable"}]}';
@@ -893,6 +904,67 @@ function fc_extract_json(string $text): ?array
     return is_array($decoded) ? $decoded : null;
 }
 
+function fc_category_key(string $value): string
+{
+    $value = strtolower(trim($value));
+    $value = preg_replace('/[^a-z]+/', '_', $value) ?? '';
+    $value = trim($value, '_');
+
+    $aliases = [
+        'chicken' => 'poultry', 'beef' => 'meat', 'steak' => 'meat', 'lamb' => 'meat',
+        'ham' => 'pork', 'bacon' => 'pork', 'salmon' => 'fish', 'tuna' => 'fish',
+        'shrimp' => 'seafood', 'crab' => 'seafood', 'shellfish' => 'seafood',
+        'vegetables' => 'vegetable', 'veg' => 'vegetable', 'rice' => 'grain',
+        'bread' => 'grain', 'noodle' => 'grain', 'noodles' => 'grain', 'milk' => 'dairy',
+        'cheese' => 'dairy', 'yogurt' => 'dairy', 'beans' => 'legume', 'bean' => 'legume',
+        'tofu' => 'legume', 'nuts' => 'nut',
+    ];
+    $value = $aliases[$value] ?? $value;
+
+    $allowed = [
+        'fish', 'meat', 'pork', 'poultry', 'seafood', 'vegetable', 'fruit',
+        'grain', 'dairy', 'egg', 'legume', 'nut', 'other',
+    ];
+
+    return in_array($value, $allowed, true) ? $value : 'other';
+}
+
+/**
+ * @param array<string, string> $aliases
+ * @return list<string>
+ */
+function fc_key_list(mixed $value, int $max = 8, array $aliases = []): array
+{
+    if (is_string($value)) {
+        $value = preg_split('/[,;]+/', $value) ?: [];
+    }
+    if (!is_array($value)) {
+        return [];
+    }
+
+    $keys = [];
+    foreach ($value as $item) {
+        if (!is_scalar($item)) {
+            continue;
+        }
+
+        $key = strtolower(trim((string) $item));
+        $key = preg_replace('/[^a-z0-9]+/', '_', $key) ?? '';
+        $key = trim($key, '_');
+        if ($key === '') {
+            continue;
+        }
+        $key = $aliases[$key] ?? $key;
+
+        $keys[$key] = true;
+        if (count($keys) >= $max) {
+            break;
+        }
+    }
+
+    return array_keys($keys);
+}
+
 /**
  * @param array<string, mixed> $result
  * @return array<string, mixed>
@@ -942,6 +1014,72 @@ function fc_normalize_result(array $result): array
         }
     }
 
+    $healthConditions = [
+        'diabetes', 'heart_disease', 'stroke', 'kidney_disease', 'liver_disease',
+        'hypertension', 'high_cholesterol', 'gout',
+    ];
+    $conditionAliases = [
+        'heart' => 'heart_disease', 'heart_attack' => 'heart_disease',
+        'heart_issues' => 'heart_disease', 'heart_problems' => 'heart_disease',
+        'cardiovascular' => 'heart_disease', 'kidney' => 'kidney_disease',
+        'kidney_issues' => 'kidney_disease', 'kidney_problems' => 'kidney_disease',
+        'renal' => 'kidney_disease', 'renal_issues' => 'kidney_disease',
+        'liver' => 'liver_disease', 'liver_issues' => 'liver_disease',
+        'liver_problems' => 'liver_disease', 'hepatic' => 'liver_disease',
+        'blood_pressure' => 'hypertension', 'high_blood_pressure' => 'hypertension',
+        'cholesterol' => 'high_cholesterol', 'high_blood_cholesterol' => 'high_cholesterol',
+        'diabetic' => 'diabetes', 'blood_sugar' => 'diabetes',
+    ];
+    $healthLevels = ['caution', 'avoid', 'unknown'];
+    $healthNotes = [];
+    foreach ((array) ($result['health_notes'] ?? []) as $note) {
+        if (!is_array($note)) {
+            continue;
+        }
+
+        $condition = strtolower(trim((string) ($note['condition'] ?? '')));
+        $condition = preg_replace('/[^a-z]+/', '_', $condition) ?? '';
+        $condition = trim($condition, '_');
+        $condition = $conditionAliases[$condition] ?? $condition;
+        if (!in_array($condition, $healthConditions, true)) {
+            continue;
+        }
+
+        $level = strtolower(trim((string) ($note['level'] ?? '')));
+        if (!in_array($level, $healthLevels, true)) {
+            $level = 'caution';
+        }
+
+        $reasonEn = $string($note['reason_en'] ?? $note['reason'] ?? '');
+        $reasonZh = $string($note['reason_zh'] ?? '');
+        if ($reasonEn === '' && $reasonZh === '') {
+            continue;
+        }
+
+        $healthNotes[$condition] = [
+            'condition' => $condition,
+            'level' => $level,
+            'reason_en' => $reasonEn,
+            'reason_zh' => $reasonZh,
+        ];
+        if (count($healthNotes) >= 6) {
+            break;
+        }
+    }
+
+    $hazardAliases = [
+        'bone' => 'bones', 'fishbone' => 'fish_bones', 'fishbones' => 'fish_bones',
+        'shell' => 'shell_fragments', 'fragment' => 'hard_fragments',
+        'fragments' => 'hard_fragments', 'seed' => 'seeds', 'pit' => 'pits',
+        'spine' => 'spines', 'scale' => 'scales', 'nut' => 'nuts',
+    ];
+    $allergenAliases = [
+        'dairy' => 'milk', 'nuts' => 'tree_nut', 'nut' => 'tree_nut',
+        'peanuts' => 'peanut', 'gluten' => 'wheat', 'soybean' => 'soy',
+        'soybeans' => 'soy', 'sesame_seed' => 'sesame', 'crustacean' => 'shellfish',
+        'crustaceans' => 'shellfish',
+    ];
+
     $items = [];
     foreach ((array) ($result['items'] ?? []) as $item) {
         if (!is_array($item)) {
@@ -950,6 +1088,9 @@ function fc_normalize_result(array $result): array
         $items[] = [
             'name' => $string($item['name'] ?? ''),
             'name_zh' => $string($item['name_zh'] ?? ''),
+            'category' => fc_category_key($string($item['category'] ?? '')),
+            'hazards' => fc_key_list($item['hazards'] ?? [], 8, $hazardAliases),
+            'allergens' => fc_key_list($item['allergens'] ?? [], 8, $allergenAliases),
             'texture' => $string($item['texture'] ?? ''),
             'texture_zh' => $string($item['texture_zh'] ?? ''),
             'risk' => $string($item['risk'] ?? ''),
@@ -958,9 +1099,22 @@ function fc_normalize_result(array $result): array
         ];
     }
 
+    $foodTypes = [];
+    $allergens = [];
+    foreach ($items as $item) {
+        if ($item['category'] !== 'other') {
+            $foodTypes[$item['category']] = true;
+        }
+        foreach ($item['allergens'] as $allergen) {
+            $allergens[$allergen] = true;
+        }
+    }
+
     return [
         'dish' => $string($result['dish'] ?? ''),
         'dish_zh' => $string($result['dish_zh'] ?? ''),
+        'food_types' => array_keys($foodTypes),
+        'allergens' => array_keys($allergens),
         'is_food' => $bool($result['is_food'] ?? true),
         'is_edible' => $bool($result['is_edible'] ?? true),
         'overall' => $verdict($string($result['overall'] ?? '')),
@@ -969,6 +1123,7 @@ function fc_normalize_result(array $result): array
         'warning_en' => $string($result['warning_en'] ?? ''),
         'warning_zh' => $string($result['warning_zh'] ?? ''),
         'modifications' => $modifications,
+        'health_notes' => array_values($healthNotes),
         'items' => $items,
     ];
 }

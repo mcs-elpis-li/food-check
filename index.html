@@ -116,6 +116,26 @@
   .mods { margin: 0 0 12px 24px; }
   .mods li { font-size: 18px; margin: 10px 0; color: #3d2433; }
   .mods li .zh { display: block; color: var(--muted); font-size: 17px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; border-radius: 999px; font-size: 16px; font-weight: 700; line-height: 1.2; }
+  .chip.cat { background: var(--pink-soft); color: var(--accent-dark); border: 1px solid var(--pink-border); }
+  .chip.hazard { background: var(--orange-bg); color: var(--orange); }
+  .chip.allergen { background: var(--red-bg); color: var(--red); }
+  .chip-label { font-size: 15px; font-weight: 800; color: var(--muted); align-self: center; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+  .item-cat { display: inline-block; margin-top: 4px; font-size: 16px; font-weight: 700; color: var(--accent-dark); }
+  .allergy-warning { background: #fff4e5; border: 3px solid #f0a35e; border-radius: 14px; padding: 12px 14px; margin: 10px 0 14px; color: #8a4b00; }
+  .allergy-warning strong { display: block; font-size: 18px; margin-bottom: 4px; }
+  .allergy-warning .chips { margin: 6px 0; }
+  .allergy-sub { font-size: 15px; font-weight: 600; color: #8a4b00; }
+  .health-notes { margin: 4px 0 14px; }
+  .health-item { border: 2px solid var(--pink-border); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; background: #fffafc; }
+  .health-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .health-cond { font-size: 18px; font-weight: 800; color: var(--text); }
+  .health-reason { font-size: 17px; color: #4a3040; }
+  .health-reason .zh { display: block; color: var(--muted); font-size: 16px; }
+  .health-disclaimer { font-size: 15px; color: var(--red); font-weight: 700; margin-top: 6px; line-height: 1.45; }
+  .allergy-note { font-size: 16px; color: var(--red); margin-top: 8px; font-weight: 700; line-height: 1.45; }
   .tts-row { display: flex; gap: 10px; margin: 14px 0 4px; }
   .tts-row .btn { flex: 1; min-height: 58px; font-size: 18px; }
   .hidden { display: none !important; }
@@ -167,7 +187,8 @@
       <button class="btn btn-secondary" id="btnRead" type="button">🔊 Read result 朗讀結果</button>
       <button class="btn btn-secondary" id="btnStopRead" type="button">⏹ Stop 停止</button>
     </div>
-    <div class="disclaimer">⚠️ This is a visual aid only. Always follow your doctor or speech therapist's advice. 此結果僅供參考，請遵從醫生或言語治療師的建議。</div>
+    <div class="disclaimer">⚠️ This is a visual aid only. It cannot confirm ingredients or allergens. Always follow your doctor, speech therapist, or dietitian/nutritionist. 此結果僅供參考，無法確認食材或致敏物。請遵從醫生、言語治療師或營養師的建議。</div>
+    <div class="allergy-note">If you have a food allergy, confirm ingredients with the kitchen and follow your allergy plan. 如有食物過敏，請向廚房確認食材並遵從過敏處理計劃。</div>
   </div>
 </main>
 
@@ -316,6 +337,68 @@
     caution:      { en: 'Caution', zh: '小心', cls: 'orange' },
     not_suitable: { en: 'Not suitable', zh: '不適合', cls: 'red' }
   };
+  var CATEGORY = {
+    fish:      { en: 'Fish', zh: '魚類', icon: '🐟' },
+    meat:      { en: 'Meat', zh: '肉類', icon: '🥩' },
+    pork:      { en: 'Pork', zh: '豬肉', icon: '🥓' },
+    poultry:   { en: 'Poultry', zh: '家禽', icon: '🍗' },
+    seafood:   { en: 'Seafood', zh: '海鮮', icon: '🦐' },
+    vegetable: { en: 'Vegetable', zh: '蔬菜', icon: '🥬' },
+    fruit:     { en: 'Fruit', zh: '水果', icon: '🍎' },
+    grain:     { en: 'Grain', zh: '穀物', icon: '🍚' },
+    dairy:     { en: 'Dairy', zh: '奶類', icon: '🥛' },
+    egg:       { en: 'Egg', zh: '蛋類', icon: '🥚' },
+    legume:    { en: 'Legume', zh: '豆類', icon: '🫘' },
+    nut:       { en: 'Nut', zh: '果仁', icon: '🥜' },
+    other:     { en: 'Other', zh: '其他', icon: '🍽️' }
+  };
+  var HAZARD = {
+    bones:           { en: 'Bones', zh: '骨頭' },
+    small_bones:     { en: 'Small bones', zh: '細骨' },
+    fish_bones:      { en: 'Fish bones', zh: '魚骨' },
+    shell_fragments: { en: 'Shell fragments', zh: '殼碎片' },
+    hard_fragments:  { en: 'Hard fragments', zh: '硬碎片' },
+    seeds:           { en: 'Seeds', zh: '種子' },
+    skin:            { en: 'Skin', zh: '外皮' },
+    cartilage:       { en: 'Cartilage', zh: '軟骨' },
+    pits:            { en: 'Pits', zh: '果核' },
+    spines:          { en: 'Spines', zh: '刺' },
+    scales:          { en: 'Scales', zh: '魚鱗' },
+    nuts:            { en: 'Nuts', zh: '果仁' }
+  };
+  var ALLERGEN = {
+    milk:      { en: 'Milk', zh: '奶類' },
+    egg:       { en: 'Egg', zh: '蛋類' },
+    fish:      { en: 'Fish', zh: '魚類' },
+    shellfish: { en: 'Shellfish', zh: '甲殼類' },
+    peanut:    { en: 'Peanut', zh: '花生' },
+    tree_nut:  { en: 'Tree nuts', zh: '樹堅果' },
+    soy:       { en: 'Soy', zh: '大豆' },
+    wheat:     { en: 'Wheat', zh: '小麥' },
+    sesame:    { en: 'Sesame', zh: '芝麻' }
+  };
+  var CONDITION = {
+    diabetes:        { en: 'Diabetes', zh: '糖尿病' },
+    heart_disease:   { en: 'Heart disease', zh: '心臟病' },
+    stroke:          { en: 'Stroke', zh: '中風' },
+    kidney_disease:  { en: 'Kidney disease', zh: '腎病' },
+    liver_disease:   { en: 'Liver disease', zh: '肝病' },
+    hypertension:    { en: 'High blood pressure', zh: '高血壓' },
+    high_cholesterol:{ en: 'High cholesterol', zh: '高膽固醇' },
+    gout:            { en: 'Gout', zh: '痛風' }
+  };
+  var HEALTH_LEVEL = {
+    caution: { en: 'Caution', zh: '注意', cls: 'orange' },
+    avoid:   { en: 'Avoid', zh: '避免', cls: 'red' },
+    unknown: { en: 'Unclear', zh: '不確定', cls: 'orange' }
+  };
+  function labelFor(map, key) {
+    var k = String(key || '').toLowerCase();
+    if (map[k]) return map[k];
+    var pretty = k.replace(/_/g, ' ');
+    pretty = pretty.replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+    return { en: pretty || 'Unknown', zh: '' };
+  }
   function esc(s) { var d = document.createElement('div'); d.textContent = String(s == null ? '' : s); return d.innerHTML; }
   function isNo(v) {
     if (v === false || v === 0 || v === '0') return true;
@@ -397,6 +480,83 @@
     if (itemEn.length) out.push({ lang: 'en-US', text: 'Ingredients. ' + itemEn.join('. ') });
     if (itemZh.length) out.push({ lang: 'zh-HK', text: '食材。' + itemZh.join('。') });
 
+    var types = Array.isArray(j.food_types) ? j.food_types.slice() : [];
+    if (!types.length) {
+      items.forEach(function (it) {
+        if (it && it.category && it.category !== 'other' && types.indexOf(it.category) === -1) {
+          types.push(it.category);
+        }
+      });
+    }
+    if (types.length) {
+      out.push({
+        lang: 'en-US',
+        text: 'Food types. ' + types.map(function (key) { return labelFor(CATEGORY, key).en; }).join(', ')
+      });
+      out.push({
+        lang: 'zh-HK',
+        text: '食物類型。' + types.map(function (key) {
+          var c = labelFor(CATEGORY, key);
+          return c.zh || c.en;
+        }).join('。')
+      });
+    }
+
+    var allergens = Array.isArray(j.allergens) ? j.allergens.slice() : [];
+    if (!allergens.length) {
+      items.forEach(function (it) {
+        (it && Array.isArray(it.allergens) ? it.allergens : []).forEach(function (key) {
+          if (allergens.indexOf(key) === -1) allergens.push(key);
+        });
+      });
+    }
+    if (allergens.length) {
+      out.push({
+        lang: 'en-US',
+        text: 'Possible allergens. ' + allergens.map(function (key) { return labelFor(ALLERGEN, key).en; }).join(', ')
+      });
+      out.push({
+        lang: 'zh-HK',
+        text: '可能致敏物。' + allergens.map(function (key) {
+          var a = labelFor(ALLERGEN, key);
+          return a.zh || a.en;
+        }).join('。')
+      });
+    }
+
+    var hazards = [];
+    items.forEach(function (it) {
+      (it && Array.isArray(it.hazards) ? it.hazards : []).forEach(function (key) {
+        if (hazards.indexOf(key) === -1) hazards.push(key);
+      });
+    });
+    if (hazards.length) {
+      out.push({
+        lang: 'en-US',
+        text: 'Possible hazards. ' + hazards.map(function (key) { return labelFor(HAZARD, key).en; }).join(', ')
+      });
+      out.push({
+        lang: 'zh-HK',
+        text: '可能風險。' + hazards.map(function (key) {
+          var h = labelFor(HAZARD, key);
+          return h.zh || h.en;
+        }).join('。')
+      });
+    }
+
+    var healthNotes = Array.isArray(j.health_notes) ? j.health_notes : [];
+    if (healthNotes.length) {
+      var healthEn = [], healthZh = [];
+      healthNotes.forEach(function (note) {
+        var c = CONDITION[note.condition] || labelFor(CONDITION, note.condition);
+        var l = HEALTH_LEVEL[note.level] || HEALTH_LEVEL.caution;
+        healthEn.push(c.en + ', ' + l.en + '. ' + (note.reason_en || ''));
+        healthZh.push((c.zh || c.en) + '，' + (l.zh || l.en) + '。' + (note.reason_zh || ''));
+      });
+      out.push({ lang: 'en-US', text: 'Long-term health notes. ' + healthEn.join(' ') });
+      out.push({ lang: 'zh-HK', text: '長期病患提示。' + healthZh.join(' ') });
+    }
+
     var mods = Array.isArray(j.modifications) ? j.modifications : [];
     var en = [], zh = [];
     mods.forEach(function (m) {
@@ -457,6 +617,59 @@
         + ' ' + esc(ov.en) + ' / ' + esc(ov.zh) + '</div>'
         + '<div style="margin-bottom:12px">' + esc(j.overall_en || '') + '<br><span style="color:var(--muted)">' + esc(j.overall_zh || '') + '</span></div>';
 
+      var types = Array.isArray(j.food_types) ? j.food_types.slice() : [];
+      if (!types.length) {
+        (j.items || []).forEach(function (it) {
+          if (it && it.category && it.category !== 'other' && types.indexOf(it.category) === -1) {
+            types.push(it.category);
+          }
+        });
+      }
+      if (types.length) {
+        html += '<div class="label">Food types 食物類型</div><div class="chips">';
+        types.forEach(function (key) {
+          var c = CATEGORY[key] || labelFor(CATEGORY, key);
+          html += '<span class="chip cat">' + (c.icon || '🍽️') + ' ' + esc(c.en)
+            + (c.zh ? ' / ' + esc(c.zh) : '') + '</span>';
+        });
+        html += '</div>';
+      }
+
+      var allergens = Array.isArray(j.allergens) ? j.allergens.slice() : [];
+      if (!allergens.length) {
+        (j.items || []).forEach(function (it) {
+          (it && Array.isArray(it.allergens) ? it.allergens : []).forEach(function (key) {
+            if (allergens.indexOf(key) === -1) allergens.push(key);
+          });
+        });
+      }
+      if (allergens.length) {
+        html += '<div class="allergy-warning" role="alert"><strong>🚨 Possible allergens 可能致敏物</strong><div class="chips">';
+        allergens.forEach(function (key) {
+          var a = labelFor(ALLERGEN, key);
+          html += '<span class="chip allergen">' + esc(a.en)
+            + (a.zh ? ' / ' + esc(a.zh) : '') + '</span>';
+        });
+        html += '</div><div class="allergy-sub">Photo estimate only. Confirm with the kitchen. 僅供參考，請向廚房確認。</div></div>';
+      }
+
+      var healthNotes = Array.isArray(j.health_notes) ? j.health_notes : [];
+      if (healthNotes.length) {
+        html += '<div class="label">Long-term health notes 長期病患提示</div><div class="health-notes">';
+        healthNotes.forEach(function (note) {
+          var cond = CONDITION[note.condition] || labelFor(CONDITION, note.condition);
+          var lvl = HEALTH_LEVEL[note.level] || HEALTH_LEVEL.caution;
+          html += '<div class="health-item">'
+            + '<div class="health-head"><span class="health-cond">' + esc(cond.en)
+            + (cond.zh ? ' / ' + esc(cond.zh) : '') + '</span>'
+            + '<span class="badge b-' + lvl.cls + '">' + esc(lvl.en) + ' / ' + esc(lvl.zh) + '</span></div>'
+            + '<div class="health-reason">' + esc(note.reason_en || '')
+            + (note.reason_zh ? '<span class="zh">' + esc(note.reason_zh) + '</span>' : '') + '</div>'
+            + '</div>';
+        });
+        html += '</div><div class="health-disclaimer">General information only, not medical advice. Confirm with your doctor or dietitian. 僅供一般參考，並非醫療建議。請向醫生或營養師確認。</div>';
+      }
+
       var mods = Array.isArray(j.modifications) ? j.modifications : [];
       if (mods.length) {
         html += '<div class="label">Ways to make it safer 安全調整建議</div><ul class="mods">';
@@ -477,11 +690,41 @@
       html += '<div class="label">Ingredients 食材明細</div>';
       (j.items || []).forEach(function (it) {
         var v = VERDICT[it.verdict] || VERDICT.caution;
+        var cat = CATEGORY[it.category] || labelFor(CATEGORY, it.category);
+
+        var hazardHtml = '';
+        var hazards = Array.isArray(it.hazards) ? it.hazards : [];
+        if (hazards.length) {
+          hazardHtml = '<div class="chip-row"><span class="chip-label">Hazards 風險</span>';
+          hazards.forEach(function (key) {
+            var h = labelFor(HAZARD, key);
+            hazardHtml += '<span class="chip hazard">' + esc(h.en)
+              + (h.zh ? ' / ' + esc(h.zh) : '') + '</span>';
+          });
+          hazardHtml += '</div>';
+        }
+
+        var allergenHtml = '';
+        var itemAllergens = Array.isArray(it.allergens) ? it.allergens : [];
+        if (itemAllergens.length) {
+          allergenHtml = '<div class="chip-row"><span class="chip-label">Allergens 致敏物</span>';
+          itemAllergens.forEach(function (key) {
+            var a = labelFor(ALLERGEN, key);
+            allergenHtml += '<span class="chip allergen">' + esc(a.en)
+              + (a.zh ? ' / ' + esc(a.zh) : '') + '</span>';
+          });
+          allergenHtml += '</div>';
+        }
+
         html += '<div class="item">'
           + '<div class="name">' + esc(it.name || '') + '<span class="badge b-' + v.cls + '">' + esc(v.en) + ' / ' + esc(v.zh) + '</span></div>'
           + '<div class="zh">' + esc(it.name_zh || '') + '</div>'
+          + '<div class="item-cat">' + (cat.icon || '🍽️') + ' ' + esc(cat.en)
+          + (cat.zh ? ' / ' + esc(cat.zh) : '') + '</div>'
           + (it.texture ? '<div class="detail">Texture 質地: ' + esc(it.texture) + '<br><span class="zh">' + esc(it.texture_zh || '') + '</span></div>' : '')
           + (it.risk ? '<div class="detail">Risk 風險: ' + esc(it.risk) + '<br><span class="zh">' + esc(it.risk_zh || '') + '</span></div>' : '')
+          + hazardHtml
+          + allergenHtml
           + '</div>';
       });
     } else {

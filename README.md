@@ -21,6 +21,11 @@ Live site: **https://food-check.elpis.li/**
 - Server-side image preprocessing: validation, EXIF orientation, downscale to
   1000x1000 px max, transparency flattening and JPEG re-encoding.
 - VLM JSON response normalised by the backend, with bilingual English and Chinese results.
+- Structured food types (fish, meat, pork, poultry, seafood, vegetable, fruit, grain, dairy,
+  egg, legume, nut), possible physical hazards (bones, fragments, seeds, skin, etc.) and
+  possible allergens.
+- General long-term health notes for diabetes, heart disease, stroke, kidney, liver, high
+  blood pressure, high cholesterol, and gout, clearly marked as non-medical.
 - Practical suggestions to make food safer: add moisture, steam/re-cook, mash/blend, cut smaller, remove skin/bones/seeds.
 - Big bright red cross warning when the image is not food or not edible.
 - Automatic fallback to a second vision model when the primary fails or rejects images.
@@ -87,9 +92,10 @@ stay on the server.
   the camera box hides, and the captured photo appears in the result card. **Check food**
   stays disabled until **Open camera** is tapped again.
 - **Text to speech.** After a result, the app queues English (`en-US`) and Traditional
-  Chinese (`zh-HK`) speech for the verdict, ingredient verdicts, and safer-food suggestions.
-  **Read result** replays it and **Stop** cancels it. Auto-read may be blocked by browser
-  policy; the button always works. Voice availability depends on the device.
+  Chinese (`zh-HK`) speech for the verdict, ingredient verdicts, food types, possible
+  allergens and hazards, long-term health notes, and safer-food suggestions. **Read result**
+  replays it and **Stop** cancels it. Auto-read may be blocked by browser policy; the button
+  always works. Voice availability depends on the device.
 
 ## Configuration
 
@@ -174,7 +180,59 @@ set `VLM_FALLBACK_MODEL=deepseek-v4.1-flash`; no other change is needed.
 
 If every provider fails or rejects images, the backend returns the last upstream error.
 
-### Circuit breaker and rate limiting
+## Food analysis details
+
+The backend normalises four extra layers of information. They are visual estimates, not
+laboratory results.
+
+### Food types
+
+Each item has one `category`: `fish`, `meat`, `pork`, `poultry`, `seafood`, `vegetable`,
+`fruit`, `grain`, `dairy`, `egg`, `legume`, `nut`, or `other`. The UI shows chips for the
+dish's unique `food_types` and a category under each ingredient.
+
+### Possible hazards
+
+`hazards` lists possible physical hazards: `bones`, `small_bones`, `fish_bones`,
+`shell_fragments`, `hard_fragments`, `seeds`, `skin`, `cartilage`, `pits`, `spines`,
+`scales`, `nuts`. The UI shows them as orange chips. They are possibilities from the photo,
+not confirmed.
+
+### Possible allergens
+
+`allergens` uses the common keys `milk`, `egg`, `fish`, `shellfish`, `peanut`, `tree_nut`,
+`soy`, `wheat`, `sesame`. Per-item lists are aggregated into the dish-level `allergens` and
+shown in a prominent orange warning card. A photo cannot confirm ingredients; always check
+the actual ingredients, sauces, marinades, cross-contact, and the person's allergy plan.
+
+### Long-term health notes
+
+`health_notes` contains general, non-diagnostic notes for `diabetes`, `heart_disease`,
+`stroke`, `kidney_disease`, `liver_disease`, `hypertension`, `high_cholesterol`, and `gout`.
+Each note has a `level` of `caution`, `avoid`, or `unknown`, plus a short reason in English
+and Traditional Chinese. The model only returns conditions with a plausible concern from
+the visible food. Examples:
+
+- **Diabetes:** refined carbohydrates, sweet sauces, large portions.
+- **Heart disease / stroke / high blood pressure / high cholesterol:** salt, fried or fatty
+  food, processed meat.
+- **Kidney disease:** high-sodium or high-potassium foods, processed foods, dairy, nuts,
+  beans.
+- **Liver disease:** alcohol, high-fat or fried food, raw shellfish.
+- **Gout:** red meat, organ meat, shellfish, beer, sugary drinks.
+
+These are general ideas, not medical advice.
+
+### Safety disclaimer
+
+- A **speech therapist** (speech-language pathologist) and **doctor** manage swallowing
+  safety; a **dietitian / nutritionist** advises on nutrition and long-term conditions. The
+  app is not a substitute for any of them.
+- It cannot confirm ingredients or allergens from a photo. If the person has a food allergy,
+  check with the kitchen and follow the allergy plan.
+- Health notes are general information only, not a diagnosis or treatment plan.
+
+## Circuit breaker and rate limiting
 
 - When the primary fails (network error, HTTP error, timeout, empty response, or an image
   rejection), the backend writes `vlm:primary:failed:<hash>` to Memcached with a TTL of
@@ -191,7 +249,7 @@ If every provider fails or rejects images, the backend returns the last upstream
   receive `429 rate_limited` with a `Retry-After` header. The per-IP limit still applies.
 - If the cache cannot be reached at all, the check fails open rather than blocking the app.
 
-### Logging and uploaded images
+## Logging and uploaded images
 
 The default log directory is `/var/tmp/food-check`, deliberately **outside the public web
 root**:
@@ -286,32 +344,73 @@ Success:
 {
   "ok": true,
   "result": {
-    "dish": "Chicken rice",
+    "dish": "Grilled salmon with vegetables",
     "dish_zh": "<Chinese translation>",
+    "food_types": ["fish", "vegetable"],
+    "allergens": ["fish"],
     "is_food": true,
     "is_edible": true,
     "overall": "caution",
-    "overall_en": "Chicken is soft but rice may be dry and sticky.",
+    "overall_en": "Salmon is soft, but check for bones and a salty sauce.",
     "overall_zh": "<Chinese translation>",
     "warning_en": "",
     "warning_zh": "",
     "modifications": [
       {
-        "en": "Add gravy or sauce to keep the rice moist",
+        "en": "Remove all fish bones and skin",
         "zh": "<Chinese translation>"
       },
       {
-        "en": "Remove the chicken skin and bones",
+        "en": "Steam or simmer until fork-soft",
         "zh": "<Chinese translation>"
+      },
+      {
+        "en": "Use a low-salt sauce",
+        "zh": "<Chinese translation>"
+      }
+    ],
+    "health_notes": [
+      {
+        "condition": "hypertension",
+        "level": "caution",
+        "reason_en": "Soy sauce and seasoning may be high in salt.",
+        "reason_zh": "<Chinese translation>"
+      },
+      {
+        "condition": "kidney_disease",
+        "level": "caution",
+        "reason_en": "Salty sauces may be high in sodium.",
+        "reason_zh": "<Chinese translation>"
+      },
+      {
+        "condition": "gout",
+        "level": "caution",
+        "reason_en": "Fish is a purine-rich food that may trigger gout.",
+        "reason_zh": "<Chinese translation>"
       }
     ],
     "items": [
       {
-        "name": "Steamed chicken",
+        "name": "Salmon",
         "name_zh": "<Chinese translation>",
-        "texture": "soft and moist",
+        "category": "fish",
+        "hazards": ["fish_bones", "skin"],
+        "allergens": ["fish"],
+        "texture": "soft and flaky",
         "texture_zh": "<Chinese translation>",
-        "risk": "remove skin and bones",
+        "risk": "fish bones and skin",
+        "risk_zh": "<Chinese translation>",
+        "verdict": "caution"
+      },
+      {
+        "name": "Steamed vegetables",
+        "name_zh": "<Chinese translation>",
+        "category": "vegetable",
+        "hazards": [],
+        "allergens": [],
+        "texture": "soft",
+        "texture_zh": "<Chinese translation>",
+        "risk": "check for hard stems",
         "risk_zh": "<Chinese translation>",
         "verdict": "suitable"
       }
@@ -342,6 +441,11 @@ reply; the frontend shows the raw text.
 shows a large bright red cross with the `warning_en` / `warning_zh` text instead of the
 normal ingredient list. `modifications` is a list of practical changes (at most 4) that may
 make the food safer for the selected IDDSI level.
+
+`food_types` and `allergens` are aggregated from the items. Each item carries its own
+`category`, `hazards`, and `allergens`. `health_notes` contains general, non-medical
+condition notes with `level` of `caution`, `avoid`, or `unknown`. See **Food analysis
+details** above for the key lists and limitations.
 
 `provider` is `primary` or `fallback`, `fallback_used` is `true` when the fallback
 model produced the answer, and `primary_skipped` is `true` when the circuit breaker
@@ -426,6 +530,13 @@ your external env file).
 The following checks were run against the live endpoint:
 
 - Primary and fallback both returned valid assessments for an apple test image.
+- Apple test: returned `food_types: ["fruit"]`, `hazards: ["seeds","skin"]`, and a
+  diabetes caution note.
+- Fish test: returned `food_types: ["fish","vegetable","fruit"]`, `allergens: ["fish"]`,
+  `fish_bones` for the salmon, and gout/high-cholesterol cautions.
+- A mocked renderer and speech engine confirmed the food-type chips, allergen warning,
+  per-item hazard/allergen chips, long-term health-note cards, and the English/Chinese TTS
+  for all four layers.
 - `minimax-m3.1-flash` and `deepseek-v4.1-flash` both correctly answered an image-colour
   prompt, confirming they accept image input.
 - Global limiter: two immediate requests returned `400` (invalid test image) followed by
