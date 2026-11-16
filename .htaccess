@@ -1,0 +1,7 @@
+# Apache fallback hardening. This site is served by nginx/openresty, which
+# already denies dotfiles; keep this file for other deployments.
+Options -Indexes
+
+<FilesMatch "(^\.|^config\.php$)">
+    Require all denied
+</FilesMatch>
