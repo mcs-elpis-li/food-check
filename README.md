@@ -225,9 +225,8 @@ These are general ideas, not medical advice.
 
 ### Safety disclaimer
 
-- A **speech therapist** (speech-language pathologist) and **doctor** manage swallowing
-  safety; a **dietitian / nutritionist** advises on nutrition and long-term conditions. The
-  app is not a substitute for any of them.
+- A **doctor** manages medical conditions; a **dietitian / nutritionist** advises on
+  nutrition and long-term conditions. The app is not a substitute for either.
 - It cannot confirm ingredients or allergens from a photo. If the person has a food allergy,
   check with the kitchen and follow the allergy plan.
 - Health notes are general information only, not a diagnosis or treatment plan.
