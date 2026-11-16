@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Food Texture Checker 食物质地检查器</title>
+<title>Food Texture Checker 食物質地檢查器</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -95,58 +95,58 @@
 <header>
   <div>
     <h1>Food Texture Checker</h1>
-    <div class="sub">食物质地检查 · 吞咽友好</div>
+    <div class="sub">食物質地檢查 · 吞嚥友好</div>
   </div>
-  <button class="gear" id="btnSettings" title="Settings 设置">⚙</button>
+  <button class="gear" id="btnSettings" title="Settings 設定">⚙</button>
 </header>
 <main>
   <!-- Diet level selector -->
   <div class="card">
-    <div class="label">Diet level 饮食级别 (IDDSI)</div>
+    <div class="label">Diet level 飲食級別 (IDDSI)</div>
     <div class="iddsi" id="iddsi">
-      <button data-level="liquid">Liquid 流质<small>Drinks only</small></button>
-      <button data-level="puree">Puréed 糊状<small>Very smooth</small></button>
-      <button data-level="minced">Minced &amp; Moist 碎湿状<small>Soft lumps</small></button>
-      <button data-level="soft">Soft 软食<small>Soft solids</small></button>
+      <button data-level="liquid">Liquid 流質<small>Drinks only</small></button>
+      <button data-level="puree">Puréed 糊狀<small>Very smooth</small></button>
+      <button data-level="minced">Minced &amp; Moist 碎濕狀<small>Soft lumps</small></button>
+      <button data-level="soft">Soft 軟食<small>Soft solids</small></button>
     </div>
   </div>
 
   <!-- Camera -->
   <div class="camera-box off" id="camBox">
     <video id="video" playsinline autoplay muted class="hidden"></video>
-    <div id="camPlaceholder">📷<br>Camera is off<br>相机未开启</div>
+    <div id="camPlaceholder">📷<br>Camera is off<br>相機未開啟</div>
   </div>
   <div class="btn-row">
-    <button class="btn btn-secondary" id="btnCam">Camera 相机</button>
-    <button class="btn btn-primary" id="btnCapture" disabled>📸 Check food 检查食物</button>
+    <button class="btn btn-secondary" id="btnCam">Camera 相機</button>
+    <button class="btn btn-primary" id="btnCapture" disabled>📸 Check food 檢查食物</button>
   </div>
-  <div class="hint">Tip: make sure all dishes are in frame with a plain background. 提示：请将整盘食物放入画面，背景简洁更容易识别。</div>
+  <div class="hint">Tip: make sure all dishes are in frame with a plain background. 提示：請將整盤食物放入畫面，背景簡潔更容易識別。</div>
   <div class="status" id="status"></div>
 
   <!-- Result -->
   <div class="card hidden" id="resultCard">
     <img id="previewImg" alt="captured food">
     <div id="result"></div>
-    <div class="disclaimer">⚠️ This is a visual aid only. Always follow your doctor or speech therapist's advice. 此结果仅供参考，请遵从医生或言语治疗师的建议。</div>
+    <div class="disclaimer">⚠️ This is a visual aid only. Always follow your doctor or speech therapist's advice. 此結果僅供參考，請遵從醫生或言語治療師的建議。</div>
   </div>
 </main>
 
 <!-- Settings modal -->
 <div class="modal" id="settingsModal">
   <div class="inner">
-    <h2>Settings 设置</h2>
-    <label>Backend API Key 后端密钥</label>
+    <h2>Settings 設定</h2>
+    <label>Backend API Key 後端密鑰</label>
     <input type="password" id="inpKey" placeholder="fc_...">
-    <label>Endpoint 端点</label>
+    <label>Endpoint 端點</label>
     <input type="text" id="inpEndpoint" placeholder="/vlm-process.php">
-    <label>Model 模型 <span style="font-weight:400">(optional 可选)</span></label>
-    <input type="text" id="inpModel" placeholder="server default 服务器默认">
-    <div class="hint" style="margin:0 0 4px">The backend key is set by the site owner in <code>config.secrets.php</code> (APP_API_KEY). 后端密钥由站主在 <code>config.secrets.php</code> 中设置。</div>
+    <label>Model 模型 <span style="font-weight:400">(optional 可選)</span></label>
+    <input type="text" id="inpModel" placeholder="server default 伺服器預設">
+    <div class="hint" style="margin:0 0 4px">The backend key is set by the site owner in <code>config.secrets.php</code> (APP_API_KEY). 後端密鑰由站主在 <code>config.secrets.php</code> 中設定。</div>
     <div class="btn-row">
       <button class="btn btn-secondary" id="btnCloseSettings">Cancel 取消</button>
-      <button class="btn btn-primary" id="btnSaveSettings">Save 保存</button>
+      <button class="btn btn-primary" id="btnSaveSettings">Save 儲存</button>
     </div>
-    <div class="privacy">Your key is stored only on this device (localStorage) and sent to this site's PHP backend. 密钥仅保存在本机，只发送到本站 PHP 后端。</div>
+    <div class="privacy">Your key is stored only on this device (localStorage) and sent to this site's PHP backend. 密鑰僅儲存在本機，只傳送到本站 PHP 後端。</div>
   </div>
 </div>
 
@@ -188,7 +188,7 @@
     cfg.endpoint = $('inpEndpoint').value.trim() || DEFAULTS.endpoint;
     cfg.model = $('inpModel').value.trim() || DEFAULTS.model;
     saveCfg(); $('settingsModal').classList.remove('show');
-    showStatus('Saved. 已保存。', false);
+    showStatus('Saved. 已儲存。', false);
   };
 
   // ---------- Status ----------
@@ -204,7 +204,7 @@
   // ---------- Camera ----------
   async function startCamera() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      showStatus('Camera not supported in this browser. 此浏览器不支持相机。', true); return;
+      showStatus('Camera not supported in this browser. 此瀏覽器不支援相機。', true); return;
     }
     try {
       stream = await navigator.mediaDevices.getUserMedia({
@@ -215,16 +215,16 @@
       await video.play();
       video.classList.remove('hidden');
       camBox.classList.remove('off'); camPlaceholder.style.display = 'none';
-      btnCam.textContent = 'Stop camera 关闭相机';
+      btnCam.textContent = 'Stop camera 關閉相機';
       btnCapture.disabled = false;
     } catch (err) {
-      showStatus('Camera error: ' + err.message + ' 相机错误。', true);
+      showStatus('Camera error: ' + err.message + ' 相機錯誤。', true);
     }
   }
   function stopCamera() {
     if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
     video.classList.add('hidden'); camBox.classList.add('off');
-    camPlaceholder.style.display = ''; btnCam.textContent = 'Camera 相机';
+    camPlaceholder.style.display = ''; btnCam.textContent = 'Camera 相機';
     btnCapture.disabled = true;
   }
   btnCam.onclick = function () { stream ? stopCamera() : startCamera(); };
@@ -232,7 +232,7 @@
   // ---------- Capture (the PHP backend does the final <=1000px resize) ----------
   function captureAndResize() {
     var vw = video.videoWidth, vh = video.videoHeight;
-    if (!vw || !vh) { showStatus('Camera not ready. 相机未就绪。', true); return null; }
+    if (!vw || !vh) { showStatus('Camera not ready. 相機未就緒。', true); return null; }
     var MAX = 1920; // upload cap; backend shrinks to 1000px for the VLM
     var scale = Math.min(1, MAX / Math.max(vw, vh)); // never upscale
     var w = Math.round(vw * scale), h = Math.round(vh * scale);
@@ -254,7 +254,7 @@
   // ---------- Backend call ----------
   async function analyze(dataUrl) {
     if (!cfg.key) {
-      showStatus('Please enter the backend API key in Settings (⚙). 请在设置中填写后端密钥。', true);
+      showStatus('Please enter the backend API key in Settings (⚙). 請在設定中填寫後端密鑰。', true);
       $('settingsModal').classList.add('show');
       return;
     }
@@ -297,11 +297,11 @@
       var j = data.result || (data.raw ? extractJson(data.raw) : null);
       renderResult(j, data.raw || '', dataUrl);
     } catch (err) {
-      var message = err && err.name === 'AbortError' ? 'Request timed out. 请求超时。' : err.message;
-      showStatus('Analysis failed 分析失败: ' + message, true);
+      var message = err && err.name === 'AbortError' ? 'Request timed out. 請求逾時。' : err.message;
+      showStatus('Analysis failed 分析失敗: ' + message, true);
     } finally {
       busy = false; btnCapture.disabled = !stream;
-      btnCapture.textContent = '📸 Check food 检查食物';
+      btnCapture.textContent = '📸 Check food 檢查食物';
     }
   }
 
@@ -312,9 +312,9 @@
     try { return JSON.parse(m[0]); } catch (e) { return null; }
   }
   var VERDICT = {
-    suitable:     { en: 'Suitable', zh: '适合', cls: 'green' },
+    suitable:     { en: 'Suitable', zh: '適合', cls: 'green' },
     caution:      { en: 'Caution', zh: '小心', cls: 'orange' },
-    not_suitable: { en: 'Not suitable', zh: '不适合', cls: 'red' }
+    not_suitable: { en: 'Not suitable', zh: '不適合', cls: 'red' }
   };
   function esc(s) { var d = document.createElement('div'); d.textContent = String(s == null ? '' : s); return d.innerHTML; }
 
@@ -326,18 +326,18 @@
       html += '<div class="verdict v-' + ov.cls + '">' + (ov.cls === 'green' ? '✅' : ov.cls === 'orange' ? '⚠️' : '🚫')
         + ' ' + esc(ov.en) + ' / ' + esc(ov.zh) + '</div>'
         + '<div style="margin-bottom:12px">' + esc(j.overall_en || '') + '<br><span style="color:var(--muted)">' + esc(j.overall_zh || '') + '</span></div>'
-        + '<div class="label">Ingredients 食材明细</div>';
+        + '<div class="label">Ingredients 食材明細</div>';
       (j.items || []).forEach(function (it) {
         var v = VERDICT[it.verdict] || VERDICT.caution;
         html += '<div class="item">'
           + '<div class="name">' + esc(it.name || '') + '<span class="badge b-' + v.cls + '">' + esc(v.en) + ' / ' + esc(v.zh) + '</span></div>'
           + '<div class="zh">' + esc(it.name_zh || '') + '</div>'
-          + (it.texture ? '<div class="detail">Texture 质地: ' + esc(it.texture) + '<br><span class="zh">' + esc(it.texture_zh || '') + '</span></div>' : '')
-          + (it.risk ? '<div class="detail">Risk 风险: ' + esc(it.risk) + '<br><span class="zh">' + esc(it.risk_zh || '') + '</span></div>' : '')
+          + (it.texture ? '<div class="detail">Texture 質地: ' + esc(it.texture) + '<br><span class="zh">' + esc(it.texture_zh || '') + '</span></div>' : '')
+          + (it.risk ? '<div class="detail">Risk 風險: ' + esc(it.risk) + '<br><span class="zh">' + esc(it.risk_zh || '') + '</span></div>' : '')
           + '</div>';
       });
     } else {
-      html += '<pre class="raw">' + esc(raw || 'No result. 没有结果。') + '</pre>';
+      html += '<pre class="raw">' + esc(raw || 'No result. 沒有結果。') + '</pre>';
     }
     $('result').innerHTML = html;
     $('resultCard').classList.remove('hidden');
