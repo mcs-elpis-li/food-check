@@ -13,7 +13,11 @@ Live site: **https://food-check.elpis.li/**
 ## Features
 
 - IDDSI diet level selector: Liquid / Pureed / Minced & Moist / Soft.
-- Rear-camera capture with a large 52px+ button UI.
+- Pink theme with larger text and 60px touch targets; browser zoom is enabled.
+- Rear-camera capture; the camera stops and hides after a photo until **Open camera** is tapped.
+- Browser text-to-speech reads the verdict, ingredient verdicts, and safer-food suggestions in
+  English and Traditional Chinese, with Read and Stop buttons.
+- Installable web app (PWA) with a pink heart icon, manifest, and service worker.
 - Server-side image preprocessing: validation, EXIF orientation, downscale to
   1000x1000 px max, transparency flattening and JPEG re-encoding.
 - VLM JSON response normalised by the backend, with bilingual English and Chinese results.
@@ -63,6 +67,28 @@ stay on the server.
 | `.env.example` | Template for an external env file (`FOOD_CHECK_ENV`); copy it **outside** the document root. |
 | `.user.ini` | PHP-FPM upload and memory limits (applied after `user_ini.cache_ttl`, default 300s). |
 | `.htaccess` | Apache hardening fallback; this site runs on nginx, which ignores it. |
+| `manifest.json` | PWA manifest (name, pink theme, standalone display, icons). |
+| `sw.js` | Service worker: network-first pages, cache-first static assets, API excluded. |
+| `icon.svg`, `icon-192.png`, `icon-512.png` | App icons. |
+| `icon-maskable.svg`, `icon-maskable-512.png` | Maskable Android icon source and PNG. |
+| `apple-touch-icon.png` | iOS home-screen icon. |
+
+## Web app, camera and speech
+
+- **Installable PWA.** `manifest.json` sets a pink theme, standalone display and the heart
+  icons. On Android Chrome use **Install app**; on iOS Safari use **Share -> Add to Home
+  Screen**. HTTPS is required (the site already uses it).
+- **Service worker.** Pages are network-first, static assets are cache-first, and
+  `/vlm-process.php` is never cached. Bump `CACHE` in `sw.js` when changing shell assets.
+- **Accessibility.** Pink theme, 20px base text, 60px buttons, high contrast, and browser
+  zoom is enabled. The result card uses `aria-live="polite"`.
+- **Camera.** The camera box is hidden while closed. After **Check food**, the stream stops,
+  the camera box hides, and the captured photo appears in the result card. **Check food**
+  stays disabled until **Open camera** is tapped again.
+- **Text to speech.** After a result, the app queues English (`en-US`) and Traditional
+  Chinese (`zh-HK`) speech for the verdict, ingredient verdicts, and safer-food suggestions.
+  **Read result** replays it and **Stop** cancels it. Auto-read may be blocked by browser
+  policy; the button always works. Voice availability depends on the device.
 
 ## Configuration
 
@@ -411,6 +437,12 @@ The following checks were run against the live endpoint:
   last 5000 entries.
 - Logging: the processed image was saved, and the log captured prompt, result, model,
   provider, API, attempts, duration, token counts, token speed, and image metadata.
+- PWA: `manifest.json`, `sw.js`, the SVG icon and the PNG icons all returned `200` with the
+  expected MIME types.
+- TTS: a mocked speech engine confirmed English (`en-US`) and Traditional Chinese (`zh-HK`)
+  utterances for the verdict, ingredient verdicts, safer-food suggestions, and the
+  non-food warning.
+- PHP lint and JavaScript syntax checks pass.
 
 ## Troubleshooting
 

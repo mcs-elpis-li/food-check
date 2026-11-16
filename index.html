@@ -2,101 +2,130 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#d81b60">
+<meta name="description" content="Food texture checker for people with swallowing difficulty. 吞嚥困難人士的食物質地檢查工具。">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Food Check">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>Food Texture Checker 食物質地檢查器</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #f5f2ec; --card: #ffffff; --text: #2a2a2a; --muted: #6b6b6b;
-    --accent: #0b7a4b; --accent-dark: #08603a;
+    --bg: #fff0f6; --card: #ffffff; --text: #2d1b26; --muted: #7a5567;
+    --accent: #d81b60; --accent-dark: #a0004a;
+    --pink-soft: #ffe4ef; --pink-border: #f2b8cf;
     --green: #0b7a4b; --green-bg: #e2f3e9;
     --orange: #b45309; --orange-bg: #fdf0dd;
-    --red: #b91c1c;   --red-bg: #fde8e8;
-    --border: #d8d2c4;
+    --red: #b91c1c; --red-bg: #fde8e8;
+    --border: #f2b8cf;
   }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-    background: var(--bg); color: var(--text);
-    font-size: 18px; line-height: 1.5; padding-bottom: 90px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang HK", "PingFang SC", "Microsoft JhengHei", sans-serif;
+    background: linear-gradient(180deg, #ffe4ef 0, #fff0f6 280px);
+    color: var(--text);
+    font-size: 20px; line-height: 1.55; padding-bottom: 90px; min-height: 100vh;
   }
   header {
-    background: var(--accent); color: #fff; padding: 14px 16px;
-    display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(135deg, #d81b60, #ad1457);
+    color: #fff; padding: 14px 16px;
     position: sticky; top: 0; z-index: 10;
+    box-shadow: 0 3px 12px rgba(173, 20, 87, .28);
   }
-  header h1 { font-size: 20px; font-weight: 700; }
-  header .sub { font-size: 13px; opacity: .9; }
-  main { padding: 12px; max-width: 640px; margin: 0 auto; }
+  .brand { display: flex; align-items: center; gap: 12px; max-width: 640px; margin: 0 auto; }
+  .app-icon { width: 52px; height: 52px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.2); background: #fff; }
+  header h1 { font-size: 24px; font-weight: 800; line-height: 1.15; }
+  header .sub { font-size: 15px; opacity: .95; }
+  main { padding: 14px; max-width: 640px; margin: 0 auto; }
   .card {
-    background: var(--card); border: 1px solid var(--border);
-    border-radius: 14px; padding: 14px; margin-bottom: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    background: var(--card); border: 1px solid var(--pink-border);
+    border-radius: 18px; padding: 16px; margin-bottom: 14px;
+    box-shadow: 0 3px 12px rgba(216, 27, 96, .10);
   }
-  .camera-box { position: relative; background: #111; border-radius: 14px; overflow: hidden; aspect-ratio: 3/4; max-height: 62vh; }
+  .camera-box { position: relative; background: #1a1a1a; border-radius: 18px; overflow: hidden; aspect-ratio: 3/4; max-height: 62vh; }
   .camera-box video { width: 100%; height: 100%; object-fit: cover; display: block; }
-  .camera-box.off { display: flex; align-items: center; justify-content: center; color: #aaa; flex-direction: column; gap: 8px; font-size: 15px; text-align: center; }
+  .camera-box.off {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); flex-direction: column; gap: 10px;
+    font-size: 17px; text-align: center;
+    background: var(--pink-soft); border: 2px dashed var(--pink-border);
+  }
+  .cam-icon { width: 64px; height: 64px; fill: var(--accent); opacity: .8; }
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    border: none; border-radius: 12px; padding: 14px 18px;
-    font-size: 18px; font-weight: 600; cursor: pointer; min-height: 52px;
+    border: none; border-radius: 14px; padding: 16px 18px;
+    font-size: 20px; font-weight: 700; cursor: pointer; min-height: 60px;
+    line-height: 1.2;
   }
   .btn:active { transform: scale(.98); }
-  .btn-primary { background: var(--accent); color: #fff; width: 100%; }
-  .btn-secondary { background: #e9e4d8; color: var(--text); width: 100%; }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); color: #fff; width: 100%; box-shadow: 0 3px 10px rgba(216,27,96,.28); }
+  .btn-primary:hover { background: var(--accent-dark); }
+  .btn-secondary { background: var(--pink-soft); color: var(--accent-dark); width: 100%; border: 2px solid var(--pink-border); }
   .btn-row { display: flex; gap: 10px; margin-top: 10px; }
   .btn-row .btn { flex: 1; }
-  .label { font-size: 15px; font-weight: 600; color: var(--muted); margin: 4px 0 6px; }
-  .iddsi { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .label { font-size: 17px; font-weight: 800; color: var(--accent-dark); margin: 6px 0 8px; }
+  .iddsi { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .iddsi button {
-    padding: 12px 8px; border-radius: 10px; border: 2px solid var(--border);
-    background: #fff; font-size: 15px; font-weight: 600; cursor: pointer; line-height: 1.3;
+    padding: 16px 10px; border-radius: 14px; border: 2px solid var(--pink-border);
+    background: #fff; font-size: 17px; font-weight: 700; cursor: pointer;
+    line-height: 1.3; color: var(--text);
   }
-  .iddsi button small { display: block; font-weight: 400; font-size: 12px; color: var(--muted); }
-  .iddsi button.active { border-color: var(--accent); background: var(--green-bg); color: var(--accent-dark); }
-  #result { font-size: 17px; }
+  .iddsi button small { display: block; font-weight: 400; font-size: 14px; color: var(--muted); margin-top: 2px; }
+  .iddsi button.active { border-color: var(--accent); background: var(--pink-soft); color: var(--accent-dark); box-shadow: inset 0 0 0 2px rgba(216,27,96,.12); }
+  #result { font-size: 19px; }
   .verdict {
-    padding: 14px; border-radius: 12px; font-size: 19px; font-weight: 700; margin-bottom: 12px;
-    display: flex; align-items: center; gap: 10px;
+    padding: 16px; border-radius: 14px; font-size: 22px; font-weight: 800; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px; line-height: 1.3;
   }
   .v-green { background: var(--green-bg); color: var(--green); }
   .v-orange { background: var(--orange-bg); color: var(--orange); }
   .v-red { background: var(--red-bg); color: var(--red); }
-  .item { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; }
-  .item .name { font-weight: 700; font-size: 17px; }
-  .item .zh { color: var(--muted); font-size: 15px; }
-  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 700; margin-left: 6px; vertical-align: middle; }
+  .item { border: 1px solid var(--pink-border); border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; background: #fffafc; }
+  .item .name { font-weight: 800; font-size: 19px; }
+  .item .zh { color: var(--muted); font-size: 17px; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 15px; font-weight: 800; margin-left: 6px; vertical-align: middle; }
   .b-green { background: var(--green-bg); color: var(--green); }
   .b-orange { background: var(--orange-bg); color: var(--orange); }
   .b-red { background: var(--red-bg); color: var(--red); }
-  .item .detail { margin-top: 6px; font-size: 15px; color: #444; }
-  .item .detail .zh { color: var(--muted); }
-  .hint { font-size: 13px; color: var(--muted); margin-top: 8px; }
-  .status { font-size: 15px; color: var(--accent-dark); background: var(--green-bg); border-radius: 10px; padding: 10px 12px; margin-top: 10px; display: none; }
+  .item .detail { margin-top: 8px; font-size: 17px; color: #4a3040; }
+  .item .detail .zh { color: var(--muted); font-size: 16px; }
+  .hint { font-size: 15px; color: var(--muted); margin-top: 10px; }
+  .status { font-size: 17px; color: var(--accent-dark); background: var(--pink-soft); border-radius: 12px; padding: 12px 14px; margin-top: 10px; display: none; }
   .status.show { display: block; }
   .status.err { background: var(--red-bg); color: var(--red); }
-  pre.raw { white-space: pre-wrap; word-break: break-word; font-size: 15px; font-family: inherit; }
-  .disclaimer { font-size: 13px; color: var(--red); margin-top: 10px; font-weight: 600; }
+  pre.raw { white-space: pre-wrap; word-break: break-word; font-size: 17px; font-family: inherit; }
+  .disclaimer { font-size: 15px; color: var(--red); margin-top: 12px; font-weight: 700; }
   .not-food {
-    background: #fff5f5; border: 4px solid #e00000; border-radius: 16px;
-    padding: 18px 14px; margin-bottom: 12px; text-align: center;
+    background: #fff1f1; border: 5px solid #e00000; border-radius: 18px;
+    padding: 20px 14px; margin-bottom: 14px; text-align: center;
   }
-  .big-cross { width: 150px; height: 150px; max-width: 50vw; display: block; margin: 0 auto 8px; fill: #e00000; filter: drop-shadow(0 0 8px rgba(224,0,0,.35)); }
-  .not-food-title { color: #c00000; font-size: 27px; font-weight: 800; line-height: 1.2; }
-  .not-food-title .zh { display: block; font-size: 20px; }
-  .not-food-reason { color: #7a0000; font-size: 16px; margin-top: 12px; }
-  .not-food-reason .zh { display: block; color: #9a0000; }
-  .mods { margin: 0 0 10px 22px; }
-  .mods li { font-size: 16px; margin: 8px 0; color: #333; }
-  .mods li .zh { display: block; color: var(--muted); font-size: 15px; }
+  .big-cross { width: 160px; height: 160px; max-width: 52vw; display: block; margin: 0 auto 8px; fill: #e00000; filter: drop-shadow(0 0 8px rgba(224,0,0,.35)); }
+  .not-food-title { color: #c00000; font-size: 30px; font-weight: 800; line-height: 1.2; }
+  .not-food-title .zh { display: block; font-size: 24px; }
+  .not-food-reason { color: #7a0000; font-size: 18px; margin-top: 12px; }
+  .not-food-reason .zh { display: block; color: #9a0000; font-size: 17px; }
+  .mods { margin: 0 0 12px 24px; }
+  .mods li { font-size: 18px; margin: 10px 0; color: #3d2433; }
+  .mods li .zh { display: block; color: var(--muted); font-size: 17px; }
+  .tts-row { display: flex; gap: 10px; margin: 14px 0 4px; }
+  .tts-row .btn { flex: 1; min-height: 58px; font-size: 18px; }
   .hidden { display: none !important; }
-  #previewImg { width: 100%; border-radius: 10px; display: block; margin-bottom: 10px; }
+  #previewImg { width: 100%; border-radius: 14px; display: block; margin-bottom: 12px; border: 2px solid var(--pink-border); }
 </style>
 </head>
 <body>
 <header>
-  <div>
-    <h1>Food Texture Checker</h1>
-    <div class="sub">食物質地檢查 · 吞嚥友好</div>
+  <div class="brand">
+    <img src="/icon-192.png" alt="" class="app-icon">
+    <div>
+      <h1>Food Texture Checker</h1>
+      <div class="sub">食物質地檢查 · 吞嚥友好</div>
+    </div>
   </div>
 </header>
 <main>
@@ -112,21 +141,28 @@
   </div>
 
   <!-- Camera -->
-  <div class="camera-box off" id="camBox">
+  <div class="camera-box off hidden" id="camBox">
     <video id="video" playsinline autoplay muted class="hidden"></video>
-    <div id="camPlaceholder">📷<br>Camera is off<br>相機未開啟</div>
+    <div id="camPlaceholder">
+      <svg class="cam-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3 7.5 5H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.5L15 3H9zm3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
+      <div>Camera is closed<br>相機已關閉</div>
+    </div>
   </div>
   <div class="btn-row">
-    <button class="btn btn-secondary" id="btnCam">Camera 相機</button>
+    <button class="btn btn-secondary" id="btnCam">📷 Open camera 開啟相機</button>
     <button class="btn btn-primary" id="btnCapture" disabled>📸 Check food 檢查食物</button>
   </div>
   <div class="hint">Tip: make sure all dishes are in frame with a plain background. 提示：請將整盤食物放入畫面，背景簡潔更容易識別。</div>
   <div class="status" id="status"></div>
 
   <!-- Result -->
-  <div class="card hidden" id="resultCard">
+  <div class="card hidden" id="resultCard" aria-live="polite">
     <img id="previewImg" alt="captured food">
     <div id="result"></div>
+    <div class="tts-row hidden" id="ttsRow">
+      <button class="btn btn-secondary" id="btnRead" type="button">🔊 Read result 朗讀結果</button>
+      <button class="btn btn-secondary" id="btnStopRead" type="button">⏹ Stop 停止</button>
+    </div>
     <div class="disclaimer">⚠️ This is a visual aid only. Always follow your doctor or speech therapist's advice. 此結果僅供參考，請遵從醫生或言語治療師的建議。</div>
   </div>
 </main>
@@ -173,19 +209,27 @@
       });
       video.srcObject = stream;
       await video.play();
+      camBox.classList.remove('hidden');
       video.classList.remove('hidden');
       camBox.classList.remove('off'); camPlaceholder.style.display = 'none';
-      btnCam.textContent = 'Stop camera 關閉相機';
+      btnCam.textContent = '⏹ Close camera 關閉相機';
       btnCapture.disabled = false;
+      stopSpeaking();
     } catch (err) {
+      stopCamera();
       showStatus('Camera error: ' + err.message + ' 相機錯誤。', true);
     }
   }
   function stopCamera() {
     if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
-    video.classList.add('hidden'); camBox.classList.add('off');
-    camPlaceholder.style.display = ''; btnCam.textContent = 'Camera 相機';
+    video.srcObject = null;
+    video.classList.add('hidden');
+    camBox.classList.add('off');
+    camBox.classList.add('hidden');
+    camPlaceholder.style.display = '';
+    btnCam.textContent = '📷 Open camera 開啟相機';
     btnCapture.disabled = true;
+    stopSpeaking();
   }
   btnCam.onclick = function () { stream ? stopCamera() : startCamera(); };
 
@@ -208,6 +252,7 @@
     if (busy) return;
     var dataUrl = captureAndResize();
     if (!dataUrl) return;
+    stopCamera();
     analyze(dataUrl);
   };
 
@@ -276,6 +321,118 @@
       || s === 'unsafe';
   }
 
+  // ---------- Text to speech ----------
+  var ttsSupported = ('speechSynthesis' in window) && ('SpeechSynthesisUtterance' in window);
+  var lastSpeech = null;
+  var ttsTimer = null;
+
+  function stopSpeaking() {
+    if (!ttsSupported) return;
+    clearTimeout(ttsTimer);
+    window.speechSynthesis.cancel();
+    $('btnRead').textContent = '🔊 Read result 朗讀結果';
+  }
+
+  function speakItems(items) {
+    if (!ttsSupported || !items || !items.length) return;
+    clearTimeout(ttsTimer);
+    window.speechSynthesis.cancel();
+    var lastItem = items[items.length - 1];
+
+    items.forEach(function (item) {
+      var u = new SpeechSynthesisUtterance(item.text);
+      var isLast = item === lastItem;
+      u.lang = item.lang || 'en-US';
+      u.rate = (item.lang || '').indexOf('zh') === 0 ? 0.85 : 0.9;
+      u.pitch = 1;
+      u.volume = 1;
+      u.onstart = function () { $('btnRead').textContent = '🔊 Reading… 朗讀中…'; };
+      u.onend = function () { if (isLast) $('btnRead').textContent = '🔊 Read again 再朗讀'; };
+      u.onerror = function () { if (isLast) $('btnRead').textContent = '🔊 Read result 朗讀結果'; };
+      window.speechSynthesis.speak(u);
+    });
+  }
+
+  function buildSpeech(j) {
+    if (!j) return null;
+    var out = [];
+    var notFood = isNo(j.is_food) || isNo(j.is_edible);
+
+    if (notFood) {
+      out.push({
+        lang: 'en-US',
+        text: 'Warning. Do not eat. ' + (j.warning_en || j.overall_en
+          || 'This does not appear to be food, or it may not be safe to eat.')
+      });
+      out.push({
+        lang: 'zh-HK',
+        text: '警告。請勿食用。' + (j.warning_zh || j.overall_zh
+          || '這似乎不是食物，或可能不安全。')
+      });
+      return out;
+    }
+
+    var ov = VERDICT[j.overall] || VERDICT.caution;
+    out.push({
+      lang: 'en-US',
+      text: (j.dish ? 'Result for ' + j.dish + '. ' : '') + ov.en + '. ' + (j.overall_en || '')
+    });
+    out.push({
+      lang: 'zh-HK',
+      text: (j.dish_zh ? j.dish_zh + '。' : '') + ov.zh + '。' + (j.overall_zh || '')
+    });
+
+    var items = Array.isArray(j.items) ? j.items : [];
+    var itemEn = [], itemZh = [];
+    items.forEach(function (it) {
+      if (!it) return;
+      var v = VERDICT[it.verdict] || VERDICT.caution;
+      if (it.name) itemEn.push(it.name + ', ' + v.en);
+      if (it.name_zh) itemZh.push(it.name_zh + '，' + v.zh);
+    });
+    if (itemEn.length) out.push({ lang: 'en-US', text: 'Ingredients. ' + itemEn.join('. ') });
+    if (itemZh.length) out.push({ lang: 'zh-HK', text: '食材。' + itemZh.join('。') });
+
+    var mods = Array.isArray(j.modifications) ? j.modifications : [];
+    var en = [], zh = [];
+    mods.forEach(function (m) {
+      if (typeof m === 'string') { if (m) en.push(m); return; }
+      if (!m) return;
+      if (m.en) en.push(m.en);
+      if (m.zh) zh.push(m.zh);
+    });
+    if (en.length) out.push({ lang: 'en-US', text: 'Ways to make it safer. ' + en.join('. ') });
+    if (zh.length) out.push({ lang: 'zh-HK', text: '安全調整建議。' + zh.join('。') });
+
+    return out;
+  }
+
+  function setupSpeech(j) {
+    if (!ttsSupported) {
+      $('ttsRow').classList.add('hidden');
+      return;
+    }
+
+    stopSpeaking();
+    lastSpeech = buildSpeech(j);
+    if (lastSpeech && lastSpeech.length) {
+      $('ttsRow').classList.remove('hidden');
+      clearTimeout(ttsTimer);
+      // A short delay lets the result render and scroll into view first.
+      ttsTimer = setTimeout(function () { speakItems(lastSpeech); }, 400);
+    } else {
+      lastSpeech = null;
+      $('ttsRow').classList.add('hidden');
+    }
+  }
+
+  if (ttsSupported) {
+    $('btnRead').addEventListener('click', function () {
+      if (lastSpeech) speakItems(lastSpeech);
+    });
+    $('btnStopRead').addEventListener('click', stopSpeaking);
+  }
+
   function renderResult(j, raw, dataUrl) {
     var html = '';
     $('previewImg').src = dataUrl;
@@ -331,11 +488,22 @@
     $('resultCard').classList.remove('hidden');
     $('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
     showStatus('Done. 分析完成。');
+    setupSpeech(j);
   }
 
   // ---------- Cleanup ----------
-  window.addEventListener('pagehide', stopCamera);
+  window.addEventListener('pagehide', function () {
+    stopCamera();
+    stopSpeaking();
+  });
 })();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('/sw.js').catch(function () {});
+  });
+}
 </script>
 </body>
 </html>
