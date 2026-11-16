@@ -120,6 +120,7 @@ return [
         ['1', 'true', 'yes', 'on'],
         true
     ),
+    'vlm_failure_ttl' => max(30, (int) $setting('VLM_FAILURE_TTL', '300')),
 
     // Image preprocessing.
     'max_dimension' => max(256, min(2048, (int) $setting('APP_MAX_DIMENSION', '1000'))),
@@ -150,4 +151,21 @@ return [
     // Simple per-IP rate limit (0 disables it).
     'rate_limit' => max(0, (int) $setting('APP_RATE_LIMIT', '60')),
     'rate_window' => max(10, (int) $setting('APP_RATE_WINDOW', '60')),
+
+    // Global image-analysis interval in seconds (0 disables it).
+    'global_min_interval' => max(0, (int) $setting('APP_GLOBAL_MIN_INTERVAL', '2')),
+
+    // Shared cache for the circuit breaker and global rate limit.
+    'memcached_host' => $setting('MEMCACHED_HOST', '127.0.0.1'),
+    'memcached_port' => max(1, (int) $setting('MEMCACHED_PORT', '11211')),
+    'memcached_prefix' => $setting('MEMCACHED_PREFIX', 'food-check:'),
+
+    // Analysis log (kept outside the public web root).
+    'log_dir' => rtrim($setting('APP_LOG_DIR', '/var/tmp/food-check'), '/'),
+    'log_max_lines' => max(100, (int) $setting('APP_LOG_MAX_LINES', '5000')),
+    'log_images' => in_array(
+        strtolower($setting('APP_LOG_IMAGES', '1')),
+        ['1', 'true', 'yes', 'on'],
+        true
+    ),
 ];

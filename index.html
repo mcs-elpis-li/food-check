@@ -217,7 +217,7 @@
     btnCapture.textContent = 'Analyzing… 分析中…';
     showStatus('Analyzing… 正在分析…');
     try {
-      var payload = { image: dataUrl, level: currentLevel };
+      var payload = { image: dataUrl, level: currentLevel, source: 'camera' };
 
       var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
       var timer = controller ? setTimeout(function () { controller.abort(); }, 150000) : null;

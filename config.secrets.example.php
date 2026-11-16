@@ -33,6 +33,21 @@ return [
     'VLM_FALLBACK_TIMEOUT' => '45',
     'VLM_FALLBACK_DISABLE_THINKING' => '0',
 
+    // Remember primary failures for 5 minutes.
+    'VLM_FAILURE_TTL' => '300',
+    // One image analysis per 2 seconds globally (0 disables).
+    'APP_GLOBAL_MIN_INTERVAL' => '2',
+
+    // Shared cache (Memcached; file cache is used if unavailable).
+    'MEMCACHED_HOST' => '127.0.0.1',
+    'MEMCACHED_PORT' => '11211',
+    'MEMCACHED_PREFIX' => 'food-check:',
+
+    // Analysis log and uploaded images (outside the web root).
+    'APP_LOG_DIR' => '/var/tmp/food-check',
+    'APP_LOG_MAX_LINES' => '5000',
+    'APP_LOG_IMAGES' => '1',
+
     // Shared key for non-same-origin API clients (X-API-Key).
     // Generate with: openssl rand -hex 32
     'APP_API_KEY' => 'fc_replace_with_a_long_random_value',

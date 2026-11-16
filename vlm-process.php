@@ -208,6 +208,368 @@ function fc_client_ip(): string
     return $ip;
 }
 
+function fc_cache_dir(): string
+{
+    $dir = sys_get_temp_dir() . '/food-check-cache';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0700, true);
+    }
+
+    return $dir;
+}
+
+function fc_cache_file(string $key): string
+{
+    return fc_cache_dir() . '/' . hash('sha256', $key) . '.json';
+}
+
+function fc_cache_file_read(string $key): mixed
+{
+    $file = fc_cache_file($key);
+    $raw = @file_get_contents($file);
+    if ($raw === false) {
+        return null;
+    }
+
+    $data = json_decode($raw, true);
+    if (!is_array($data) || (int) ($data['expires'] ?? 0) <= time()) {
+        @unlink($file);
+
+        return null;
+    }
+
+    return $data['value'] ?? null;
+}
+
+function fc_cache_file_write(string $key, mixed $value, int $ttl): bool
+{
+    $payload = json_encode(['expires' => time() + max(1, $ttl), 'value' => $value]);
+    if ($payload === false) {
+        return false;
+    }
+
+    return @file_put_contents(fc_cache_file($key), $payload, LOCK_EX) !== false;
+}
+
+/**
+ * @return bool|null True when added, false when the key exists, null on I/O failure.
+ */
+function fc_cache_file_add(string $key, mixed $value, int $ttl): ?bool
+{
+    $file = fc_cache_file($key);
+    $payload = json_encode(['expires' => time() + max(1, $ttl), 'value' => $value]);
+    if ($payload === false) {
+        return null;
+    }
+
+    $handle = @fopen($file, 'x');
+    if ($handle !== false) {
+        $written = fwrite($handle, $payload);
+        fclose($handle);
+
+        return $written !== false ? true : null;
+    }
+
+    $raw = @file_get_contents($file);
+    if ($raw === false) {
+        return null;
+    }
+
+    $data = json_decode($raw, true);
+    if (is_array($data) && (int) ($data['expires'] ?? 0) > time()) {
+        return false;
+    }
+
+    @unlink($file);
+    $handle = @fopen($file, 'x');
+    if ($handle === false) {
+        return null;
+    }
+    $written = fwrite($handle, $payload);
+    fclose($handle);
+
+    return $written !== false ? true : null;
+}
+
+function fc_memcached(array $config): ?Memcached
+{
+    static $client = false;
+
+    if ($client !== false) {
+        return $client;
+    }
+
+    if (!class_exists('Memcached')) {
+        return $client = null;
+    }
+
+    try {
+        $client = new Memcached();
+        $client->setOption(Memcached::OPT_PREFIX_KEY, (string) $config['memcached_prefix']);
+        $client->addServer((string) $config['memcached_host'], (int) $config['memcached_port']);
+        $client->getVersion();
+
+        if ($client->getResultCode() !== Memcached::RES_SUCCESS) {
+            return $client = null;
+        }
+
+        return $client;
+    } catch (Throwable $error) {
+        error_log('food-check: memcached init failed: ' . $error->getMessage());
+
+        return $client = null;
+    }
+}
+
+function fc_cache_get(array $config, string $key): mixed
+{
+    $client = fc_memcached($config);
+    if ($client !== null) {
+        $value = $client->get($key);
+        $code = $client->getResultCode();
+        if ($code === Memcached::RES_SUCCESS) {
+            return $value;
+        }
+        if ($code === Memcached::RES_NOTFOUND) {
+            return fc_cache_file_read($key);
+        }
+    }
+
+    return fc_cache_file_read($key);
+}
+
+function fc_cache_set(array $config, string $key, mixed $value, int $ttl): void
+{
+    $ttl = max(1, $ttl);
+    $client = fc_memcached($config);
+    if ($client !== null && $client->set($key, $value, $ttl)) {
+        return;
+    }
+
+    fc_cache_file_write($key, $value, $ttl);
+}
+
+function fc_cache_add(array $config, string $key, mixed $value, int $ttl): bool
+{
+    $ttl = max(1, $ttl);
+    $client = fc_memcached($config);
+    if ($client !== null) {
+        if ($client->add($key, $value, $ttl)) {
+            return true;
+        }
+
+        $code = $client->getResultCode();
+        if ($code === Memcached::RES_NOTSTORED || $code === Memcached::RES_DATA_EXISTS) {
+            return false;
+        }
+    }
+
+    $result = fc_cache_file_add($key, $value, $ttl);
+
+    // Fail open when the cache is unavailable: do not block the application.
+    return $result === null ? true : $result;
+}
+
+function fc_cache_delete(array $config, string $key): void
+{
+    $client = fc_memcached($config);
+    if ($client !== null) {
+        $client->delete($key);
+    }
+
+    @unlink(fc_cache_file($key));
+}
+
+/**
+ * Writable log directory, preferring APP_LOG_DIR and falling back to temp.
+ */
+function fc_log_dir(array $config): string
+{
+    $candidates = [(string) $config['log_dir'], sys_get_temp_dir() . '/food-check'];
+
+    foreach ($candidates as $candidate) {
+        $dir = rtrim(trim($candidate), '/');
+        if ($dir === '') {
+            continue;
+        }
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0770, true);
+        }
+        if (is_dir($dir) && is_writable($dir)) {
+            return $dir;
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Prompt text without the base64 image payload.
+ *
+ * @param list<array<string, mixed>> $messages
+ */
+function fc_prompt_text(array $messages): string
+{
+    $parts = [];
+
+    foreach ($messages as $message) {
+        if (!is_array($message)) {
+            continue;
+        }
+
+        $role = (string) ($message['role'] ?? 'unknown');
+        $content = $message['content'] ?? '';
+
+        if (is_string($content)) {
+            $parts[] = $role . ': ' . $content;
+        } elseif (is_array($content)) {
+            foreach ($content as $part) {
+                if (is_array($part) && ($part['type'] ?? '') === 'text') {
+                    $parts[] = $role . ': ' . (string) ($part['text'] ?? '');
+                }
+            }
+        }
+    }
+
+    $text = implode("\n", $parts);
+    if (strlen($text) > 12000) {
+        $text = function_exists('mb_substr')
+            ? mb_substr($text, 0, 12000, 'UTF-8')
+            : substr($text, 0, 12000);
+        $text .= '...';
+    }
+
+    return $text;
+}
+
+/**
+ * Save the processed image outside the public web root.
+ */
+function fc_save_image(array $config, string $bytes): ?string
+{
+    if (empty($config['log_images'])) {
+        return null;
+    }
+
+    $dir = fc_log_dir($config);
+    if ($dir === '') {
+        return null;
+    }
+
+    $uploads = $dir . '/uploads';
+    if (!is_dir($uploads)) {
+        @mkdir($uploads, 0770, true);
+    }
+    if (!is_dir($uploads) || !is_writable($uploads)) {
+        return null;
+    }
+
+    try {
+        $suffix = bin2hex(random_bytes(6));
+    } catch (Throwable $error) {
+        $suffix = (string) mt_rand(100000, 999999);
+    }
+
+    $path = $uploads . '/' . gmdate('Ymd_His') . '_' . $suffix . '.jpg';
+    if (@file_put_contents($path, $bytes, LOCK_EX) === false) {
+        return null;
+    }
+    @chmod($path, 0640);
+
+    return $path;
+}
+
+/**
+ * Append one JSON line to vlm.log, keeping only the last APP_LOG_MAX_LINES.
+ *
+ * @param array<string, mixed> $entry
+ */
+function fc_log_call(array $config, array $entry): void
+{
+    try {
+        $dir = fc_log_dir($config);
+        if ($dir === '') {
+            return;
+        }
+
+        $file = $dir . '/vlm.log';
+        $line = json_encode(
+            $entry,
+            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE
+        );
+        if ($line === false) {
+            return;
+        }
+        $line .= "\n";
+
+        $maxLines = max(100, (int) $config['log_max_lines']);
+        $handle = @fopen($file, 'c+');
+        if ($handle === false) {
+            return;
+        }
+        if (!flock($handle, LOCK_EX)) {
+            fclose($handle);
+
+            return;
+        }
+
+        $countFile = $file . '.count';
+        $count = (int) @file_get_contents($countFile);
+        if ($count <= 0) {
+            rewind($handle);
+            $count = 0;
+            while (fgets($handle) !== false) {
+                $count++;
+            }
+        }
+
+        fseek($handle, 0, SEEK_END);
+        fwrite($handle, $line);
+        $count++;
+
+        if ($count > $maxLines) {
+            fflush($handle);
+            rewind($handle);
+            $lines = [];
+            while (($current = fgets($handle)) !== false) {
+                $lines[] = $current;
+            }
+            $lines = array_slice($lines, -$maxLines);
+            rewind($handle);
+            ftruncate($handle, 0);
+            fwrite($handle, implode('', $lines));
+            $count = count($lines);
+        }
+
+        @file_put_contents($countFile, (string) $count, LOCK_EX);
+        fflush($handle);
+        flock($handle, LOCK_UN);
+        fclose($handle);
+
+        @chmod($file, 0640);
+        @chmod($countFile, 0640);
+    } catch (Throwable $error) {
+        error_log('food-check: log write failed: ' . $error->getMessage());
+    }
+}
+
+function fc_global_rate_limit(array $config): void
+{
+    $interval = (int) $config['global_min_interval'];
+    if ($interval <= 0) {
+        return;
+    }
+
+    if (!fc_cache_add($config, 'rate:global:image', time(), $interval)) {
+        header('Retry-After: ' . $interval);
+        fc_fail(
+            429,
+            'rate_limited',
+            'Only one image can be analyzed every ' . $interval . ' seconds. Please wait and try again.'
+        );
+    }
+}
+
 /**
  * Stable per-client session ID used by the OpenCode Zen fallback.
  */
@@ -220,7 +582,7 @@ function fc_session_id(): string
  * Call one OpenAI-compatible chat completions endpoint.
  *
  * @param array<string, mixed> $payload
- * @return array{data: array<string, mixed>, content: string}
+ * @return array{data: array<string, mixed>, content: string, duration_ms: int}
  */
 function fc_call_vlm(
     string $baseUrl,
@@ -260,9 +622,11 @@ function fc_call_vlm(
         CURLOPT_HTTPHEADER => $headers,
     ]);
 
+    $started = microtime(true);
     $response = curl_exec($handle);
     $curlError = curl_error($handle);
     $upstreamStatus = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
+    $durationMs = (int) round((microtime(true) - $started) * 1000);
     curl_close($handle);
 
     $host = (string) (parse_url($baseUrl, PHP_URL_HOST) ?: $baseUrl);
@@ -327,6 +691,7 @@ function fc_call_vlm(
     return [
         'data' => $upstream,
         'content' => trim($content),
+        'duration_ms' => $durationMs,
     ];
 }
 
@@ -668,6 +1033,7 @@ if (!$sameOrigin
 }
 
 fc_rate_limit($config, fc_client_ip());
+fc_global_rate_limit($config);
 
 // ---------------------------------------------------------------------------
 // Request body
@@ -760,6 +1126,26 @@ if ($contentType === 'application/json') {
     fc_fail(415, 'unsupported_content_type', 'Send JSON, multipart/form-data, or a raw image body.');
 }
 
+$defaultSource = 'camera';
+if ($contentType === 'multipart/form-data'
+    && isset($_FILES['image']['name'])
+    && is_string($_FILES['image']['name'])
+) {
+    $defaultSource = basename($_FILES['image']['name']);
+}
+
+$sourceName = $field('source', $defaultSource);
+$sourceName = trim((string) preg_replace('/[^A-Za-z0-9._ -]+/', '_', $sourceName));
+$sourceName = $sourceName !== '' ? substr($sourceName, 0, 120) : 'camera';
+
+$requestStarted = microtime(true);
+$logContext = [
+    'datetime' => date('c'),
+    'source' => $sourceName,
+    'status' => 'error',
+];
+$attempts = [];
+
 // ---------------------------------------------------------------------------
 // Validation and preprocessing
 // ---------------------------------------------------------------------------
@@ -773,6 +1159,7 @@ try {
     if (!isset($levels[$level])) {
         throw new FoodCheckApiError(400, 'invalid_level', 'level must be one of: liquid, puree, minced, soft.');
     }
+    $logContext['level'] = $level;
 
     $model = (string) $config['vlm_model'];
     $requestedModel = $field('model', '');
@@ -792,10 +1179,24 @@ try {
 
     $prepared = fc_prepare_image($imageBytes, $config);
     $dataUrl = 'data:' . $prepared['mime'] . ';base64,' . base64_encode($prepared['bytes']);
+    $savedImage = fc_save_image($config, $prepared['bytes']);
+
+    $logContext['image'] = [
+        'path' => $savedImage,
+        'width' => $prepared['width'],
+        'height' => $prepared['height'],
+        'bytes' => strlen($prepared['bytes']),
+        'mime' => $prepared['mime'],
+        'source_width' => $prepared['source_width'],
+        'source_height' => $prepared['source_height'],
+    ];
 
     $messages = fc_build_messages($level);
     // messages[1].content[1] is the image part.
     $messages[1]['content'][1]['image_url']['url'] = $dataUrl;
+
+    $logContext['model_requested'] = $model;
+    $logContext['prompt'] = fc_prompt_text($messages);
 
     $primaryPayload = [
         'model' => $model,
@@ -810,15 +1211,16 @@ try {
         $primaryPayload['chat_template_kwargs'] = ['enable_thinking' => false];
     }
 
-    $providers = [[
+    $primaryProvider = [
         'name' => 'primary',
         'base_url' => (string) $config['vlm_base_url'],
         'api_key' => (string) $config['vlm_api_key'],
         'payload' => $primaryPayload,
         'timeout' => (int) $config['vlm_timeout'],
         'session_id' => '',
-    ]];
+    ];
 
+    $fallbackProvider = null;
     if (!empty($config['vlm_fallback_enabled'])
         && (string) $config['vlm_fallback_base_url'] !== ''
         && (string) $config['vlm_fallback_model'] !== ''
@@ -834,7 +1236,7 @@ try {
             $fallbackPayload['chat_template_kwargs'] = ['enable_thinking' => false];
         }
 
-        $providers[] = [
+        $fallbackProvider = [
             'name' => 'fallback',
             'base_url' => (string) $config['vlm_fallback_base_url'],
             'api_key' => (string) $config['vlm_fallback_api_key'],
@@ -845,6 +1247,25 @@ try {
         ];
     }
 
+    // Circuit breaker: if the primary failed recently, go straight to the fallback.
+    $failureKey = 'vlm:primary:failed:' . substr(
+        hash('sha256', (string) $config['vlm_base_url'] . '|' . $model),
+        0,
+        16
+    );
+    $primarySkipped = $fallbackProvider !== null && fc_cache_get($config, $failureKey) !== null;
+
+    $providers = [];
+    if (!$primarySkipped) {
+        $providers[] = $primaryProvider;
+    }
+    if ($fallbackProvider !== null) {
+        $providers[] = $fallbackProvider;
+    }
+    if ($providers === []) {
+        $providers[] = $primaryProvider;
+    }
+
     $upstream = null;
     $content = '';
     $usedProvider = '';
@@ -852,6 +1273,7 @@ try {
     $lastError = null;
 
     foreach ($providers as $index => $provider) {
+        $attemptStarted = microtime(true);
         try {
             $result = fc_call_vlm(
                 $provider['base_url'],
@@ -864,10 +1286,53 @@ try {
             $content = $result['content'];
             $usedProvider = $provider['name'];
             $usedModel = (string) $provider['payload']['model'];
+
+            $attempts[] = [
+                'provider' => $provider['name'],
+                'model' => $usedModel,
+                'api' => $provider['base_url'],
+                'ms' => $result['duration_ms'],
+                'ok' => true,
+            ];
+
+            $logContext['vlm_ms'] = $result['duration_ms'];
+            $logContext['provider'] = $usedProvider;
+            $logContext['model'] = $usedModel;
+            $logContext['api'] = $provider['base_url'];
+            $logContext['primary_skipped'] = $primarySkipped;
+
+            if ($provider['name'] === 'primary') {
+                fc_cache_delete($config, $failureKey);
+            }
+
             break;
         } catch (FoodCheckApiError $error) {
             $lastError = $error;
+            $attemptMs = (int) round((microtime(true) - $attemptStarted) * 1000);
+            $logContext['vlm_ms'] = $attemptMs;
+            $attempts[] = [
+                'provider' => $provider['name'],
+                'model' => (string) $provider['payload']['model'],
+                'api' => $provider['base_url'],
+                'ms' => $attemptMs,
+                'ok' => false,
+                'error' => $error->errorCode,
+                'message' => $error->getMessage(),
+            ];
             error_log('food-check: ' . $provider['name'] . ' VLM failed: ' . $error->getMessage());
+
+            if ($provider['name'] === 'primary' && $fallbackProvider !== null) {
+                fc_cache_set(
+                    $config,
+                    $failureKey,
+                    ['time' => time(), 'reason' => $error->getMessage()],
+                    (int) $config['vlm_failure_ttl']
+                );
+                error_log(
+                    'food-check: primary VLM marked unavailable for '
+                    . (int) $config['vlm_failure_ttl'] . ' seconds'
+                );
+            }
 
             if ($index === count($providers) - 1) {
                 throw $error;
@@ -875,21 +1340,50 @@ try {
         }
     }
 
+    $logContext['attempts'] = $attempts;
+
     if ($upstream === null || $usedProvider === '') {
         throw $lastError ?? new FoodCheckApiError(502, 'upstream_error', 'No vision model provider completed the request.');
     }
 
     $parsed = fc_extract_json($content);
+    $resultData = $parsed !== null ? fc_normalize_result($parsed) : null;
+    $usage = is_array($upstream['usage'] ?? null) ? $upstream['usage'] : [];
+    $completionTokens = (int) ($usage['completion_tokens'] ?? 0);
+    $vlmMs = (int) ($logContext['vlm_ms'] ?? 0);
+    $totalMs = (int) round((microtime(true) - $requestStarted) * 1000);
+
+    $logContext['status'] = 'success';
+    $logContext['finished_at'] = date('c');
+    $logContext['duration_ms'] = $totalMs;
+    $logContext['tokens'] = [
+        'prompt' => (int) ($usage['prompt_tokens'] ?? 0),
+        'completion' => $completionTokens,
+        'total' => (int) ($usage['total_tokens'] ?? 0),
+        'reasoning' => (int) ($usage['completion_tokens_details']['reasoning_tokens'] ?? 0),
+        'cached' => (int) ($usage['prompt_tokens_details']['cached_tokens'] ?? 0),
+    ];
+    $logContext['tokens_per_second'] = $vlmMs > 0
+        ? round($completionTokens / ($vlmMs / 1000), 1)
+        : null;
+    $logContext['result'] = $resultData;
+    $logContext['raw'] = strlen($content) > 20000 ? substr($content, 0, 20000) . '...' : $content;
+    $logContext['is_food'] = $resultData['is_food'] ?? null;
+    $logContext['is_edible'] = $resultData['is_edible'] ?? null;
+    $logContext['overall'] = $resultData['overall'] ?? null;
+    $logContext['attempts'] = $attempts;
+    fc_log_call($config, $logContext);
 
     fc_json(200, [
         'ok' => true,
-        'result' => $parsed !== null ? fc_normalize_result($parsed) : null,
+        'result' => $resultData,
         'raw' => $content,
         'level' => $level,
         'model' => $usedModel,
         'provider' => $usedProvider,
         'fallback_used' => $usedProvider === 'fallback',
-        'usage' => is_array($upstream['usage'] ?? null) ? $upstream['usage'] : null,
+        'primary_skipped' => $primarySkipped,
+        'usage' => $usage !== [] ? $usage : null,
         'image' => [
             'width' => $prepared['width'],
             'height' => $prepared['height'],
@@ -900,8 +1394,29 @@ try {
         ],
     ]);
 } catch (FoodCheckApiError $error) {
+    $logContext['status'] = 'error';
+    $logContext['finished_at'] = date('c');
+    $logContext['duration_ms'] = (int) round((microtime(true) - $requestStarted) * 1000);
+    $logContext['error'] = [
+        'code' => $error->errorCode,
+        'message' => $error->getMessage(),
+    ];
+    $logContext['attempts'] = $attempts;
+    fc_log_call($config, $logContext);
+
     fc_fail($error->status, $error->errorCode, $error->getMessage());
 } catch (Throwable $error) {
     error_log('food-check: unexpected error: ' . $error->getMessage());
+
+    $logContext['status'] = 'error';
+    $logContext['finished_at'] = date('c');
+    $logContext['duration_ms'] = (int) round((microtime(true) - $requestStarted) * 1000);
+    $logContext['error'] = [
+        'code' => 'internal_error',
+        'message' => $error->getMessage(),
+    ];
+    $logContext['attempts'] = $attempts;
+    fc_log_call($config, $logContext);
+
     fc_fail(500, 'internal_error', 'An unexpected server error occurred.');
 }
