@@ -14,7 +14,7 @@ Live site: **https://food-check.elpis.li/**
 
 - IDDSI diet level selector: Liquid / Pureed / Minced & Moist / Soft.
 - Pink theme with larger text and 60px touch targets; browser zoom is enabled.
-- Rear-camera capture; the camera stops and hides after a photo until **Open camera** is tapped.
+- Centered rear-camera preview; tap it or **Check food** to capture; the camera stops and hides after a photo until **Open camera** is tapped.
 - Browser text-to-speech reads the verdict, ingredient verdicts, and safer-food suggestions in
   English and Traditional Chinese, with Read and Stop buttons.
 - Installable web app (PWA) with a pink food-bowl icon, manifest, and service worker.
@@ -88,9 +88,10 @@ stay on the server.
 - **Accessibility.** Pink theme, 20px base text, a 20px high-contrast tip callout, 60px
   buttons, high contrast, and browser zoom is enabled. The result card uses
   `aria-live="polite"`.
-- **Camera.** The camera box is hidden while closed. After **Check food**, the stream stops,
-  the camera box hides, and the captured photo appears in the result card. **Check food**
-  stays disabled until **Open camera** is tapped again.
+- **Camera.** The portrait preview is centered. Tap the preview (or press **Check food**) to
+  capture. After capture, the stream stops, the camera box hides, and the captured photo
+  appears in the result card. **Check food** stays disabled until **Open camera** is tapped
+  again.
 - **Text to speech.** After a result, the app queues English (`en-US`) and Traditional
   Chinese (`zh-HK`) speech for the verdict, ingredient verdicts, food types, possible
   allergens and hazards, long-term health notes, and safer-food suggestions. **Read result**

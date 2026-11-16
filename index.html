@@ -46,13 +46,25 @@
     border-radius: 18px; padding: 16px; margin-bottom: 14px;
     box-shadow: 0 3px 12px rgba(216, 27, 96, .10);
   }
-  .camera-box { position: relative; background: #1a1a1a; border-radius: 18px; overflow: hidden; aspect-ratio: 3/4; max-height: 62vh; }
+  .camera-box {
+    position: relative; background: #1a1a1a; border-radius: 18px; overflow: hidden;
+    width: min(100%, 46vh); margin: 0 auto; aspect-ratio: 3/4; max-height: 62vh;
+    cursor: pointer; touch-action: manipulation; box-shadow: 0 4px 16px rgba(173,20,87,.22);
+  }
   .camera-box video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .camera-box:focus-visible { outline: 4px solid var(--accent); outline-offset: 3px; }
   .camera-box.off {
     display: flex; align-items: center; justify-content: center;
     color: var(--muted); flex-direction: column; gap: 10px;
-    font-size: 17px; text-align: center;
+    font-size: 17px; text-align: center; cursor: default;
     background: var(--pink-soft); border: 2px dashed var(--pink-border);
+  }
+  .tap-hint {
+    position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
+    background: rgba(255,255,255,.94); color: var(--accent-dark);
+    padding: 8px 14px; border-radius: 999px; font-size: 16px; font-weight: 800;
+    max-width: calc(100% - 16px); white-space: normal; text-align: center;
+    pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,.22);
   }
   .cam-icon { width: 64px; height: 64px; fill: var(--accent); opacity: .8; }
   .btn {
@@ -165,8 +177,9 @@
   </div>
 
   <!-- Camera -->
-  <div class="camera-box off hidden" id="camBox">
+  <div class="camera-box off hidden" id="camBox" role="button" tabindex="0" aria-label="Tap to capture a food photo 點按拍攝食物照片">
     <video id="video" playsinline autoplay muted class="hidden"></video>
+    <div class="tap-hint">📸 Tap to capture 點按拍攝</div>
     <div id="camPlaceholder">
       <svg class="cam-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3 7.5 5H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.5L15 3H9zm3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
       <div>Camera is closed<br>相機已關閉</div>
@@ -176,7 +189,7 @@
     <button class="btn btn-secondary" id="btnCam">📷 Open camera 開啟相機</button>
     <button class="btn btn-primary" id="btnCapture" disabled>📸 Check food 檢查食物</button>
   </div>
-  <div class="hint">Tip: make sure all dishes are in frame with a plain background. 提示：請將整盤食物放入畫面，背景簡潔更容易識別。</div>
+  <div class="hint">Tip: make sure all dishes are in frame with a plain background. Tap the camera or press Check food to capture. 提示：請將整盤食物放入畫面，背景簡潔更容易識別。點按相機或按「檢查食物」即可拍攝。</div>
   <div class="status" id="status"></div>
 
   <!-- Result -->
@@ -273,13 +286,22 @@
     return c.toDataURL('image/jpeg', 0.9);
   }
 
-  $('btnCapture').onclick = function () {
-    if (busy) return;
+  function captureAndAnalyze() {
+    if (busy || !stream) return;
     var dataUrl = captureAndResize();
     if (!dataUrl) return;
     stopCamera();
     analyze(dataUrl);
-  };
+  }
+
+  $('btnCapture').onclick = captureAndAnalyze;
+  camBox.addEventListener('click', captureAndAnalyze);
+  camBox.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      captureAndAnalyze();
+    }
+  });
 
   // ---------- Backend call ----------
   async function analyze(dataUrl) {
