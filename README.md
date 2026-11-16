@@ -17,6 +17,8 @@ Live site: **https://food-check.elpis.li/**
 - Server-side image preprocessing: validation, EXIF orientation, downscale to
   1000x1000 px max, transparency flattening and JPEG re-encoding.
 - VLM JSON response normalised by the backend, with bilingual English and Chinese results.
+- Practical suggestions to make food safer: add moisture, steam/re-cook, mash/blend, cut smaller, remove skin/bones/seeds.
+- Big bright red cross warning when the image is not food or not edible.
 - Fixed backend endpoint (`/vlm-process.php`); no settings dialog or client-side configuration.
 - Same-origin proxy by default, optional API key for external clients, optional CORS allow-list, per-IP rate limiting.
 
@@ -161,9 +163,23 @@ Success:
   "result": {
     "dish": "Chicken rice",
     "dish_zh": "<Chinese translation>",
+    "is_food": true,
+    "is_edible": true,
     "overall": "caution",
     "overall_en": "Chicken is soft but rice may be dry and sticky.",
     "overall_zh": "<Chinese translation>",
+    "warning_en": "",
+    "warning_zh": "",
+    "modifications": [
+      {
+        "en": "Add gravy or sauce to keep the rice moist",
+        "zh": "<Chinese translation>"
+      },
+      {
+        "en": "Remove the chicken skin and bones",
+        "zh": "<Chinese translation>"
+      }
+    ],
     "items": [
       {
         "name": "Steamed chicken",
@@ -193,6 +209,11 @@ Success:
 
 If the model does not return parseable JSON, `result` is `null` and `raw` contains the
 reply; the frontend shows the raw text.
+
+`is_food` and `is_edible` are normalised to booleans. When either is `false`, the frontend
+shows a large bright red cross with the `warning_en` / `warning_zh` text instead of the
+normal ingredient list. `modifications` is a list of practical changes (at most 4) that may
+make the food safer for the selected IDDSI level.
 
 Errors are JSON with an HTTP status:
 

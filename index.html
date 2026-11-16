@@ -76,6 +76,18 @@
   .status.err { background: var(--red-bg); color: var(--red); }
   pre.raw { white-space: pre-wrap; word-break: break-word; font-size: 15px; font-family: inherit; }
   .disclaimer { font-size: 13px; color: var(--red); margin-top: 10px; font-weight: 600; }
+  .not-food {
+    background: #fff5f5; border: 4px solid #e00000; border-radius: 16px;
+    padding: 18px 14px; margin-bottom: 12px; text-align: center;
+  }
+  .big-cross { width: 150px; height: 150px; max-width: 50vw; display: block; margin: 0 auto 8px; fill: #e00000; filter: drop-shadow(0 0 8px rgba(224,0,0,.35)); }
+  .not-food-title { color: #c00000; font-size: 27px; font-weight: 800; line-height: 1.2; }
+  .not-food-title .zh { display: block; font-size: 20px; }
+  .not-food-reason { color: #7a0000; font-size: 16px; margin-top: 12px; }
+  .not-food-reason .zh { display: block; color: #9a0000; }
+  .mods { margin: 0 0 10px 22px; }
+  .mods li { font-size: 16px; margin: 8px 0; color: #333; }
+  .mods li .zh { display: block; color: var(--muted); font-size: 15px; }
   .hidden { display: none !important; }
   #previewImg { width: 100%; border-radius: 10px; display: block; margin-bottom: 10px; }
 </style>
@@ -256,16 +268,52 @@
     not_suitable: { en: 'Not suitable', zh: '不適合', cls: 'red' }
   };
   function esc(s) { var d = document.createElement('div'); d.textContent = String(s == null ? '' : s); return d.innerHTML; }
+  function isNo(v) {
+    if (v === false || v === 0 || v === '0') return true;
+    var s = String(v).toLowerCase().trim();
+    return s === 'false' || s === 'no' || s === 'not food' || s === 'non-food'
+      || s === 'nonfood' || s === 'not_food' || s === 'inedible' || s === 'not edible'
+      || s === 'unsafe';
+  }
 
   function renderResult(j, raw, dataUrl) {
     var html = '';
     $('previewImg').src = dataUrl;
-    if (j && j.items) {
+
+    var notFood = j && (isNo(j.is_food) || isNo(j.is_edible));
+    if (notFood) {
+      var reasonEn = j.warning_en || j.overall_en || 'This does not appear to be food, or it may not be safe to eat.';
+      var reasonZh = j.warning_zh || j.overall_zh || '這似乎不是食物，或可能不安全，請勿食用。';
+      html += '<div class="not-food" role="alert">'
+        + '<svg class="big-cross" viewBox="0 0 100 100" aria-hidden="true">'
+        + '<path d="M16 6 L50 40 L84 6 L94 16 L60 50 L94 84 L84 94 L50 60 L16 94 L6 84 L40 50 L6 16 Z"/></svg>'
+        + '<div class="not-food-title">Do not eat<span class="zh">請勿食用</span></div>'
+        + '<div class="not-food-reason">' + esc(reasonEn) + '<span class="zh">' + esc(reasonZh) + '</span></div>'
+        + '</div>';
+    } else if (j && j.items) {
       var ov = VERDICT[j.overall] || VERDICT.caution;
       html += '<div class="verdict v-' + ov.cls + '">' + (ov.cls === 'green' ? '✅' : ov.cls === 'orange' ? '⚠️' : '🚫')
         + ' ' + esc(ov.en) + ' / ' + esc(ov.zh) + '</div>'
-        + '<div style="margin-bottom:12px">' + esc(j.overall_en || '') + '<br><span style="color:var(--muted)">' + esc(j.overall_zh || '') + '</span></div>'
-        + '<div class="label">Ingredients 食材明細</div>';
+        + '<div style="margin-bottom:12px">' + esc(j.overall_en || '') + '<br><span style="color:var(--muted)">' + esc(j.overall_zh || '') + '</span></div>';
+
+      var mods = Array.isArray(j.modifications) ? j.modifications : [];
+      if (mods.length) {
+        html += '<div class="label">Ways to make it safer 安全調整建議</div><ul class="mods">';
+        mods.forEach(function (m) {
+          if (typeof m === 'string') {
+            if (m) html += '<li>' + esc(m) + '</li>';
+            return;
+          }
+          if (!m) return;
+          var en = m.en || m.action_en || '';
+          var zh = m.zh || m.action_zh || '';
+          if (!en && !zh) return;
+          html += '<li>' + (en ? esc(en) : '') + (zh ? '<span class="zh">' + esc(zh) + '</span>' : '') + '</li>';
+        });
+        html += '</ul>';
+      }
+
+      html += '<div class="label">Ingredients 食材明細</div>';
       (j.items || []).forEach(function (it) {
         var v = VERDICT[it.verdict] || VERDICT.caution;
         html += '<div class="item">'
@@ -278,6 +326,7 @@
     } else {
       html += '<pre class="raw">' + esc(raw || 'No result. 沒有結果。') + '</pre>';
     }
+
     $('result').innerHTML = html;
     $('resultCard').classList.remove('hidden');
     $('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
