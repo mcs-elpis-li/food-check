@@ -25,6 +25,14 @@ return [
     'VLM_MODEL' => 'your-vision-model',
     'VLM_API_KEY' => 'sk_replace_me',
 
+    // Optional fallback vision model.
+    'VLM_FALLBACK_BASE_URL' => '',
+    'VLM_FALLBACK_MODEL' => '',
+    'VLM_FALLBACK_API_KEY' => '',
+    'VLM_FALLBACK_ENABLED' => '1',
+    'VLM_FALLBACK_TIMEOUT' => '45',
+    'VLM_FALLBACK_DISABLE_THINKING' => '0',
+
     // Shared key for non-same-origin API clients (X-API-Key).
     // Generate with: openssl rand -hex 32
     'APP_API_KEY' => 'fc_replace_with_a_long_random_value',

@@ -220,7 +220,7 @@
       var payload = { image: dataUrl, level: currentLevel };
 
       var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-      var timer = controller ? setTimeout(function () { controller.abort(); }, 120000) : null;
+      var timer = controller ? setTimeout(function () { controller.abort(); }, 150000) : null;
 
       var res;
       try {

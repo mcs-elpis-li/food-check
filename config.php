@@ -105,6 +105,22 @@ return [
     'vlm_api_key' => $setting('VLM_API_KEY', $setting('OPENAI_API_KEY', '')),
     'vlm_timeout' => max(10, (int) $setting('VLM_TIMEOUT', '90')),
 
+    // Optional fallback provider, tried when the primary fails or rejects images.
+    'vlm_fallback_base_url' => rtrim($setting('VLM_FALLBACK_BASE_URL', ''), '/'),
+    'vlm_fallback_model' => $setting('VLM_FALLBACK_MODEL', ''),
+    'vlm_fallback_api_key' => $setting('VLM_FALLBACK_API_KEY', ''),
+    'vlm_fallback_enabled' => in_array(
+        strtolower($setting('VLM_FALLBACK_ENABLED', '1')),
+        ['1', 'true', 'yes', 'on'],
+        true
+    ),
+    'vlm_fallback_timeout' => max(10, (int) $setting('VLM_FALLBACK_TIMEOUT', '45')),
+    'vlm_fallback_disable_thinking' => in_array(
+        strtolower($setting('VLM_FALLBACK_DISABLE_THINKING', '0')),
+        ['1', 'true', 'yes', 'on'],
+        true
+    ),
+
     // Image preprocessing.
     'max_dimension' => max(256, min(2048, (int) $setting('APP_MAX_DIMENSION', '1000'))),
     'jpeg_quality' => max(50, min(95, (int) $setting('APP_JPEG_QUALITY', '85'))),

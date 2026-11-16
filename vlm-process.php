@@ -209,6 +209,128 @@ function fc_client_ip(): string
 }
 
 /**
+ * Stable per-client session ID used by the OpenCode Zen fallback.
+ */
+function fc_session_id(): string
+{
+    return 'food-check-' . substr(hash('sha256', 'food-check|' . fc_client_ip()), 0, 32);
+}
+
+/**
+ * Call one OpenAI-compatible chat completions endpoint.
+ *
+ * @param array<string, mixed> $payload
+ * @return array{data: array<string, mixed>, content: string}
+ */
+function fc_call_vlm(
+    string $baseUrl,
+    string $apiKey,
+    array $payload,
+    int $timeout,
+    string $sessionId = ''
+): array {
+    $requestBody = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($requestBody === false) {
+        throw new FoodCheckApiError(500, 'internal_error', 'Could not encode the model request.');
+    }
+
+    $headers = [
+        'Content-Type: application/json',
+        'Accept: application/json',
+        'Authorization: Bearer ' . $apiKey,
+        'User-Agent: food-check/1.0',
+    ];
+    if ($sessionId !== '') {
+        $headers[] = 'x-opencode-session: ' . $sessionId;
+    }
+
+    $endpoint = rtrim($baseUrl, '/') . '/chat/completions';
+    $handle = curl_init($endpoint);
+    if ($handle === false) {
+        throw new FoodCheckApiError(500, 'internal_error', 'Could not initialise the HTTP client.');
+    }
+
+    curl_setopt_array($handle, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $requestBody,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 10,
+        CURLOPT_TIMEOUT => $timeout,
+        CURLOPT_FOLLOWLOCATION => false,
+        CURLOPT_HTTPHEADER => $headers,
+    ]);
+
+    $response = curl_exec($handle);
+    $curlError = curl_error($handle);
+    $upstreamStatus = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
+    curl_close($handle);
+
+    $host = (string) (parse_url($baseUrl, PHP_URL_HOST) ?: $baseUrl);
+
+    if ($response === false) {
+        error_log('food-check: VLM curl error for ' . $host . ': ' . $curlError);
+        throw new FoodCheckApiError(502, 'upstream_unreachable', 'Could not reach the vision model service.');
+    }
+
+    $upstream = json_decode($response, true);
+    $upstreamMessage = '';
+    if (is_array($upstream)) {
+        if (is_array($upstream['error'] ?? null)) {
+            $upstreamMessage = (string) ($upstream['error']['message'] ?? '');
+        } elseif (is_string($upstream['error'] ?? null)) {
+            $upstreamMessage = $upstream['error'];
+        }
+    }
+
+    if ($upstreamStatus < 200 || $upstreamStatus >= 300) {
+        error_log('food-check: VLM HTTP ' . $upstreamStatus . ' from ' . $host . ': '
+            . substr($upstreamMessage !== '' ? $upstreamMessage : $response, 0, 500));
+
+        if (stripos($upstreamMessage, 'image') !== false
+            && (stripos($upstreamMessage, 'may be provided') !== false
+                || stripos($upstreamMessage, 'not support') !== false)
+        ) {
+            throw new FoodCheckApiError(
+                502,
+                'vision_not_supported',
+                'The configured vision model does not accept images.'
+            );
+        }
+
+        throw new FoodCheckApiError(
+            502,
+            'upstream_error',
+            'The vision model returned an error (HTTP ' . $upstreamStatus . ').'
+        );
+    }
+
+    if (!is_array($upstream)) {
+        throw new FoodCheckApiError(502, 'invalid_upstream_response', 'The vision model returned an invalid response.');
+    }
+
+    $content = $upstream['choices'][0]['message']['content'] ?? '';
+    if (is_array($content)) {
+        $parts = [];
+        foreach ($content as $part) {
+            if (is_string($part)) {
+                $parts[] = $part;
+            } elseif (is_array($part) && isset($part['text']) && is_string($part['text'])) {
+                $parts[] = $part['text'];
+            }
+        }
+        $content = implode("\n", $parts);
+    }
+    if (!is_string($content) || trim($content) === '') {
+        throw new FoodCheckApiError(502, 'empty_response', 'The vision model returned an empty response.');
+    }
+
+    return [
+        'data' => $upstream,
+        'content' => trim($content),
+    ];
+}
+
+/**
  * @param array<string, mixed> $config
  */
 function fc_rate_limit(array $config, string $ip): void
@@ -675,7 +797,7 @@ try {
     // messages[1].content[1] is the image part.
     $messages[1]['content'][1]['image_url']['url'] = $dataUrl;
 
-    $payload = [
+    $primaryPayload = [
         'model' => $model,
         'messages' => $messages,
         'max_tokens' => (int) $config['max_tokens'],
@@ -685,86 +807,78 @@ try {
     // Qwen3-style servers support this. It keeps reasoning tokens from
     // consuming the 2048-token output budget, so the JSON answer fits.
     if (!empty($config['disable_thinking'])) {
-        $payload['chat_template_kwargs'] = ['enable_thinking' => false];
+        $primaryPayload['chat_template_kwargs'] = ['enable_thinking' => false];
     }
 
-    $requestBody = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-    if ($requestBody === false) {
-        throw new FoodCheckApiError(500, 'internal_error', 'Could not encode the model request.');
-    }
+    $providers = [[
+        'name' => 'primary',
+        'base_url' => (string) $config['vlm_base_url'],
+        'api_key' => (string) $config['vlm_api_key'],
+        'payload' => $primaryPayload,
+        'timeout' => (int) $config['vlm_timeout'],
+        'session_id' => '',
+    ]];
 
-    $handle = curl_init($config['vlm_base_url'] . '/chat/completions');
-    if ($handle === false) {
-        throw new FoodCheckApiError(500, 'internal_error', 'Could not initialise the HTTP client.');
-    }
-
-    curl_setopt_array($handle, [
-        CURLOPT_POST => true,
-        CURLOPT_POSTFIELDS => $requestBody,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_CONNECTTIMEOUT => 10,
-        CURLOPT_TIMEOUT => (int) $config['vlm_timeout'],
-        CURLOPT_FOLLOWLOCATION => false,
-        CURLOPT_HTTPHEADER => [
-            'Content-Type: application/json',
-            'Accept: application/json',
-            'Authorization: Bearer ' . $config['vlm_api_key'],
-        ],
-    ]);
-
-    $response = curl_exec($handle);
-    $curlError = curl_error($handle);
-    $upstreamStatus = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
-    curl_close($handle);
-
-    if ($response === false) {
-        error_log('food-check: VLM request failed: ' . $curlError);
-        throw new FoodCheckApiError(502, 'upstream_unreachable', 'Could not reach the vision model service.');
-    }
-
-    $upstream = json_decode($response, true);
-    $upstreamMessage = is_array($upstream)
-        ? (string) ($upstream['error']['message'] ?? '')
-        : '';
-
-    if ($upstreamStatus < 200 || $upstreamStatus >= 300) {
-        error_log('food-check: VLM HTTP ' . $upstreamStatus . ': ' . substr($upstreamMessage !== '' ? $upstreamMessage : $response, 0, 500));
-
-        if (stripos($upstreamMessage, 'image') !== false
-            && (stripos($upstreamMessage, 'may be provided') !== false
-                || stripos($upstreamMessage, 'not support') !== false)
-        ) {
-            throw new FoodCheckApiError(
-                502,
-                'vision_not_supported',
-                'The configured vision model does not accept images. Set VLM_MODEL to a vision-capable model.'
-            );
+    if (!empty($config['vlm_fallback_enabled'])
+        && (string) $config['vlm_fallback_base_url'] !== ''
+        && (string) $config['vlm_fallback_model'] !== ''
+        && (string) $config['vlm_fallback_api_key'] !== ''
+    ) {
+        $fallbackPayload = [
+            'model' => (string) $config['vlm_fallback_model'],
+            'messages' => $messages,
+            'max_tokens' => (int) $config['max_tokens'],
+            'temperature' => (float) $config['temperature'],
+        ];
+        if (!empty($config['vlm_fallback_disable_thinking'])) {
+            $fallbackPayload['chat_template_kwargs'] = ['enable_thinking' => false];
         }
 
-        throw new FoodCheckApiError(502, 'upstream_error', 'The vision model returned an error (HTTP ' . $upstreamStatus . ').');
+        $providers[] = [
+            'name' => 'fallback',
+            'base_url' => (string) $config['vlm_fallback_base_url'],
+            'api_key' => (string) $config['vlm_fallback_api_key'],
+            'payload' => $fallbackPayload,
+            'timeout' => (int) $config['vlm_fallback_timeout'],
+            // OpenCode Zen requires a stable session ID for routing.
+            'session_id' => fc_session_id(),
+        ];
     }
 
-    if (!is_array($upstream)) {
-        throw new FoodCheckApiError(502, 'invalid_upstream_response', 'The vision model returned an invalid response.');
-    }
+    $upstream = null;
+    $content = '';
+    $usedProvider = '';
+    $usedModel = '';
+    $lastError = null;
 
-    $content = $upstream['choices'][0]['message']['content'] ?? '';
-    if (is_array($content)) {
-        $parts = [];
-        foreach ($content as $part) {
-            if (is_string($part)) {
-                $parts[] = $part;
-            } elseif (is_array($part) && isset($part['text']) && is_string($part['text'])) {
-                $parts[] = $part['text'];
+    foreach ($providers as $index => $provider) {
+        try {
+            $result = fc_call_vlm(
+                $provider['base_url'],
+                $provider['api_key'],
+                $provider['payload'],
+                $provider['timeout'],
+                $provider['session_id']
+            );
+            $upstream = $result['data'];
+            $content = $result['content'];
+            $usedProvider = $provider['name'];
+            $usedModel = (string) $provider['payload']['model'];
+            break;
+        } catch (FoodCheckApiError $error) {
+            $lastError = $error;
+            error_log('food-check: ' . $provider['name'] . ' VLM failed: ' . $error->getMessage());
+
+            if ($index === count($providers) - 1) {
+                throw $error;
             }
         }
-        $content = implode("\n", $parts);
-    }
-    if (!is_string($content) || trim($content) === '') {
-        throw new FoodCheckApiError(502, 'empty_response', 'The vision model returned an empty response.');
     }
 
-    $content = trim($content);
+    if ($upstream === null || $usedProvider === '') {
+        throw $lastError ?? new FoodCheckApiError(502, 'upstream_error', 'No vision model provider completed the request.');
+    }
+
     $parsed = fc_extract_json($content);
 
     fc_json(200, [
@@ -772,7 +886,9 @@ try {
         'result' => $parsed !== null ? fc_normalize_result($parsed) : null,
         'raw' => $content,
         'level' => $level,
-        'model' => $model,
+        'model' => $usedModel,
+        'provider' => $usedProvider,
+        'fallback_used' => $usedProvider === 'fallback',
         'usage' => is_array($upstream['usage'] ?? null) ? $upstream['usage'] : null,
         'image' => [
             'width' => $prepared['width'],

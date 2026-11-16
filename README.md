@@ -19,6 +19,7 @@ Live site: **https://food-check.elpis.li/**
 - VLM JSON response normalised by the backend, with bilingual English and Chinese results.
 - Practical suggestions to make food safer: add moisture, steam/re-cook, mash/blend, cut smaller, remove skin/bones/seeds.
 - Big bright red cross warning when the image is not food or not edible.
+- Automatic fallback to a second vision model when the primary fails or rejects images.
 - Fixed backend endpoint (`/vlm-process.php`); no settings dialog or client-side configuration.
 - Same-origin proxy by default, optional API key for external clients, optional CORS allow-list, per-IP rate limiting.
 
@@ -34,6 +35,10 @@ vlm-process.php --> config.php --> config.secrets.php
    |  POST /chat/completions
    v
 VLM server (VLM_BASE_URL)  -->  JSON result
+   ^
+   |  on failure, retry
+   |
+VLM fallback (VLM_FALLBACK_BASE_URL)  -->  JSON result
    ^
    +-- normalised { ok, result, raw, usage, image } to the browser
 ```
@@ -75,6 +80,12 @@ chmod 640 config.secrets.php
 | `VLM_BASE_URL` | none (required) | OpenAI-compatible base URL, for example `https://host/v1`. |
 | `VLM_MODEL` | none (required) | Model name. **It must support image input.** |
 | `VLM_API_KEY` | none (required) | Upstream VLM key (server-side only). |
+| `VLM_FALLBACK_BASE_URL` | empty | Optional fallback OpenAI-compatible base URL. |
+| `VLM_FALLBACK_MODEL` | empty | Optional fallback vision model. |
+| `VLM_FALLBACK_API_KEY` | empty | Fallback VLM key (server-side only). |
+| `VLM_FALLBACK_ENABLED` | `1` | Enable the fallback when all three fallback values are set. |
+| `VLM_FALLBACK_TIMEOUT` | `45` | Fallback request timeout in seconds. |
+| `VLM_FALLBACK_DISABLE_THINKING` | `0` | Disable reasoning tokens for the fallback model. |
 | `APP_MAX_DIMENSION` | `1000` | Longest side of the image sent to the VLM. |
 | `APP_JPEG_QUALITY` | `85` | Re-encode quality (50-95). |
 | `APP_ALLOWED_ORIGINS` | empty | Comma-separated CORS origins; empty means same-origin only, `*` allows any origin. |
@@ -112,9 +123,16 @@ The server limits output to **2048 tokens**. The backend therefore sets `max_tok
 the answer from being truncated while leaving the full budget for the JSON result. Set
 `VLM_DISABLE_THINKING=0` for a model that does not support that option.
 
-If an upstream model still rejects images, the backend returns a clear
-`vision_not_supported` error. Point `VLM_BASE_URL` and `VLM_MODEL` at a vision-capable
-model in that case.
+The fallback endpoint (`https://opencode.ai/zen/go/v1`, model `minimax-m3.1-flash`) is
+also verified as a vision model: it correctly identified a red test image. OpenCode Zen
+requires an `x-opencode-session` header, so the backend sends a stable per-client session
+ID for fallback requests. The fallback is tried automatically when the primary fails,
+times out, or rejects images.
+
+`deepseek-v4.1-flash` on the same endpoint is also verified as a vision model. To use it,
+set `VLM_FALLBACK_MODEL=deepseek-v4.1-flash`; no other change is needed.
+
+If every provider fails or rejects images, the backend returns the last upstream error.
 
 ## API
 
@@ -195,6 +213,8 @@ Success:
   "raw": "<original model reply>",
   "level": "soft",
   "model": "qwen3.8-27b",
+  "provider": "primary",
+  "fallback_used": false,
   "usage": { "prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0 },
   "image": {
     "width": 1000,
@@ -214,6 +234,9 @@ reply; the frontend shows the raw text.
 shows a large bright red cross with the `warning_en` / `warning_zh` text instead of the
 normal ingredient list. `modifications` is a list of practical changes (at most 4) that may
 make the food safer for the selected IDDSI level.
+
+`provider` is `primary` or `fallback`, and `fallback_used` is `true` when the fallback
+model produced the answer.
 
 Errors are JSON with an HTTP status:
 
@@ -250,6 +273,7 @@ performs the authoritative 1000 px resize.
 ## Security notes
 
 - VLM credentials live only on the server.
+- Fallback VLM credentials live only on the server as well.
 - `config.secrets.php` is a PHP file with a direct-access guard; requesting it returns 404.
 - The old `.env` was removed from the web root. Use `FOOD_CHECK_ENV` pointing outside the
   document root if you prefer an env file.
