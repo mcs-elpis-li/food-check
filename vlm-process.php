@@ -573,6 +573,12 @@ try {
         'temperature' => (float) $config['temperature'],
     ];
 
+    // Qwen3-style servers support this. It keeps reasoning tokens from
+    // consuming the 2048-token output budget, so the JSON answer fits.
+    if (!empty($config['disable_thinking'])) {
+        $payload['chat_template_kwargs'] = ['enable_thinking' => false];
+    }
+
     $requestBody = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     if ($requestBody === false) {
         throw new FoodCheckApiError(500, 'internal_error', 'Could not encode the model request.');

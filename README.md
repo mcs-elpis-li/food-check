@@ -79,8 +79,9 @@ chmod 640 config.secrets.php
 | `APP_RATE_LIMIT` | `60` | Requests per IP per window; `0` disables the limit. |
 | `APP_RATE_WINDOW` | `60` | Rate-limit window in seconds. |
 | `VLM_TIMEOUT` | `90` | Upstream request timeout in seconds. |
-| `VLM_MAX_TOKENS` | `1200` | Maximum tokens in the model reply. |
+| `VLM_MAX_TOKENS` | `2048` | Maximum output tokens (the current server limit). |
 | `VLM_TEMPERATURE` | `0.2` | Sampling temperature. |
+| `VLM_DISABLE_THINKING` | `1` | Disable Qwen3 reasoning tokens so the output budget is used for JSON. |
 
 Generate a new backend key:
 
@@ -96,13 +97,21 @@ The site is a static page, so a key typed by the user is the only way to avoid p
 the key in the HTML source. If you embed it in JavaScript, treat it as public and rely on
 the rate limit.
 
-### Vision model limitation
+### Model notes
 
-The configured endpoint (`office-3080ti-8080.carryai.co`, model `qwen3.8-27b`) is
-currently **text-only** and rejects images with
-`At most 0 image(s) may be provided in one prompt`. Point `VLM_BASE_URL` and `VLM_MODEL`
-at a vision-capable model (for example, a Qwen-VL or GPT-4o-class model) to use the app.
-The backend converts that upstream error into a clear `vision_not_supported` response.
+The configured endpoint (`office-3080ti-8080.carryai.co`, model `qwen3.8-27b`) now
+accepts images. The test request returned a valid JSON assessment with a 1000x750 resized
+image.
+
+The server limits output to **2048 tokens**. The backend therefore sets `max_tokens` to
+2048 and disables Qwen3 reasoning tokens with
+`chat_template_kwargs: {"enable_thinking": false}` (`VLM_DISABLE_THINKING=1`). This keeps
+the answer from being truncated while leaving the full budget for the JSON result. Set
+`VLM_DISABLE_THINKING=0` for a model that does not support that option.
+
+If an upstream model still rejects images, the backend returns a clear
+`vision_not_supported` error. Point `VLM_BASE_URL` and `VLM_MODEL` at a vision-capable
+model in that case.
 
 ## API
 

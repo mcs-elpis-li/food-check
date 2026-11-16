@@ -42,6 +42,7 @@ return [
 
     // Model tuning.
     'VLM_TIMEOUT' => '90',
-    'VLM_MAX_TOKENS' => '1200',
+    'VLM_MAX_TOKENS' => '2048',
     'VLM_TEMPERATURE' => '0.2',
+    'VLM_DISABLE_THINKING' => '1',
 ];

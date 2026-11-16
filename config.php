@@ -112,8 +112,13 @@ return [
     'max_request_bytes' => max(524288, (int) $setting('APP_MAX_REQUEST_BYTES', (string) (12 * 1024 * 1024))),
 
     // Generation settings.
-    'max_tokens' => max(100, min(8192, (int) $setting('VLM_MAX_TOKENS', '1200'))),
+    'max_tokens' => max(100, min(2048, (int) $setting('VLM_MAX_TOKENS', '2048'))),
     'temperature' => max(0.0, min(2.0, (float) $setting('VLM_TEMPERATURE', '0.2'))),
+    'disable_thinking' => in_array(
+        strtolower($setting('VLM_DISABLE_THINKING', '1')),
+        ['1', 'true', 'yes', 'on'],
+        true
+    ),
 
     // CORS: empty list means same-origin only. Use "*" to allow any origin.
     'allowed_origins' => $origins,
