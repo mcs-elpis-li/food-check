@@ -125,6 +125,55 @@ function fc_build_messages(string $level): array
 }
 
 /**
+ * Host used for same-origin checks, with any port removed.
+ */
+function fc_request_host(): string
+{
+    $host = strtolower(trim((string) ($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? '')));
+
+    return preg_replace('/:\d+$/', '', $host) ?? $host;
+}
+
+function fc_url_host(string $url): string
+{
+    $parts = parse_url($url);
+    if (!is_array($parts) || empty($parts['host'])) {
+        return '';
+    }
+
+    return strtolower((string) $parts['host']);
+}
+
+/**
+ * True for a request made by the page itself. Browsers send
+ * Sec-Fetch-Site: same-origin for these requests.
+ */
+function fc_is_same_origin(): bool
+{
+    $site = strtolower(trim((string) ($_SERVER['HTTP_SEC_FETCH_SITE'] ?? '')));
+    if ($site === 'same-origin') {
+        return true;
+    }
+    if ($site !== '' && $site !== 'none') {
+        return false;
+    }
+
+    $host = fc_request_host();
+    if ($host === '') {
+        return false;
+    }
+
+    foreach (['HTTP_ORIGIN', 'HTTP_REFERER'] as $key) {
+        $value = trim((string) ($_SERVER[$key] ?? ''));
+        if ($value !== '' && fc_url_host($value) === $host) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * Client IP, taking the reverse proxy into account.
  */
 function fc_client_ip(): string
@@ -432,8 +481,12 @@ if ($providedKey === '') {
     $providedKey = trim($_SERVER['HTTP_X_API_KEY'] ?? '');
 }
 
-if ($providedKey === '' || !hash_equals($expectedKey, $providedKey)) {
-    fc_fail(401, 'unauthorized', 'Invalid or missing API key. Add the backend key in Settings (⚙).');
+$sameOrigin = !empty($config['allow_same_origin']) && fc_is_same_origin();
+
+if (!$sameOrigin
+    && ($providedKey === '' || !hash_equals($expectedKey, $providedKey))
+) {
+    fc_fail(401, 'unauthorized', 'Missing or invalid API key.');
 }
 
 fc_rate_limit($config, fc_client_ip());

@@ -26,10 +26,6 @@
   }
   header h1 { font-size: 20px; font-weight: 700; }
   header .sub { font-size: 13px; opacity: .9; }
-  .gear {
-    background: rgba(255,255,255,.2); border: none; color: #fff;
-    font-size: 22px; width: 44px; height: 44px; border-radius: 10px; cursor: pointer;
-  }
   main { padding: 12px; max-width: 640px; margin: 0 auto; }
   .card {
     background: var(--card); border: 1px solid var(--border);
@@ -79,13 +75,6 @@
   .status.show { display: block; }
   .status.err { background: var(--red-bg); color: var(--red); }
   pre.raw { white-space: pre-wrap; word-break: break-word; font-size: 15px; font-family: inherit; }
-  .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
-  .modal.show { display: flex; }
-  .modal .inner { background: #fff; border-radius: 14px; padding: 18px; width: 100%; max-width: 480px; }
-  .modal h2 { font-size: 18px; margin-bottom: 12px; }
-  .modal label { display: block; font-size: 14px; font-weight: 600; margin: 10px 0 4px; }
-  .modal input { width: 100%; padding: 12px; font-size: 16px; border: 1px solid var(--border); border-radius: 10px; }
-  .privacy { font-size: 13px; color: var(--muted); margin-top: 8px; }
   .disclaimer { font-size: 13px; color: var(--red); margin-top: 10px; font-weight: 600; }
   .hidden { display: none !important; }
   #previewImg { width: 100%; border-radius: 10px; display: block; margin-bottom: 10px; }
@@ -97,7 +86,6 @@
     <h1>Food Texture Checker</h1>
     <div class="sub">食物質地檢查 · 吞嚥友好</div>
   </div>
-  <button class="gear" id="btnSettings" title="Settings 設定">⚙</button>
 </header>
 <main>
   <!-- Diet level selector -->
@@ -131,35 +119,9 @@
   </div>
 </main>
 
-<!-- Settings modal -->
-<div class="modal" id="settingsModal">
-  <div class="inner">
-    <h2>Settings 設定</h2>
-    <label>Backend API Key 後端密鑰</label>
-    <input type="password" id="inpKey" placeholder="fc_...">
-    <label>Endpoint 端點</label>
-    <input type="text" id="inpEndpoint" placeholder="/vlm-process.php">
-    <label>Model 模型 <span style="font-weight:400">(optional 可選)</span></label>
-    <input type="text" id="inpModel" placeholder="server default 伺服器預設">
-    <div class="hint" style="margin:0 0 4px">The backend key is set by the site owner in <code>config.secrets.php</code> (APP_API_KEY). 後端密鑰由站主在 <code>config.secrets.php</code> 中設定。</div>
-    <div class="btn-row">
-      <button class="btn btn-secondary" id="btnCloseSettings">Cancel 取消</button>
-      <button class="btn btn-primary" id="btnSaveSettings">Save 儲存</button>
-    </div>
-    <div class="privacy">Your key is stored only on this device (localStorage) and sent to this site's PHP backend. 密鑰僅儲存在本機，只傳送到本站 PHP 後端。</div>
-  </div>
-</div>
-
 <script>
 (function () {
   'use strict';
-
-  // ---------- Config (localStorage) ----------
-  var CFG_KEY = 'ftc_cfg_v2';
-  var DEFAULTS = { key: '', endpoint: '/vlm-process.php', model: '' };
-  var cfg = Object.assign({}, DEFAULTS);
-  try { Object.assign(cfg, JSON.parse(localStorage.getItem(CFG_KEY) || '{}')); } catch (e) {}
-  function saveCfg() { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); }
 
   // ---------- IDDSI ----------
   var currentLevel = 'soft';
@@ -176,20 +138,6 @@
     b.classList.add('active'); currentLevel = b.getAttribute('data-level');
   });
   document.querySelector('#iddsi button[data-level="soft"]').classList.add('active');
-
-  // ---------- Settings ----------
-  $('btnSettings').onclick = function () {
-    $('inpKey').value = cfg.key; $('inpEndpoint').value = cfg.endpoint; $('inpModel').value = cfg.model;
-    $('settingsModal').classList.add('show');
-  };
-  $('btnCloseSettings').onclick = function () { $('settingsModal').classList.remove('show'); };
-  $('btnSaveSettings').onclick = function () {
-    cfg.key = $('inpKey').value.trim();
-    cfg.endpoint = $('inpEndpoint').value.trim() || DEFAULTS.endpoint;
-    cfg.model = $('inpModel').value.trim() || DEFAULTS.model;
-    saveCfg(); $('settingsModal').classList.remove('show');
-    showStatus('Saved. 已儲存。', false);
-  };
 
   // ---------- Status ----------
   var statusTimer = null;
@@ -253,28 +201,20 @@
 
   // ---------- Backend call ----------
   async function analyze(dataUrl) {
-    if (!cfg.key) {
-      showStatus('Please enter the backend API key in Settings (⚙). 請在設定中填寫後端密鑰。', true);
-      $('settingsModal').classList.add('show');
-      return;
-    }
-
     busy = true; btnCapture.disabled = true;
     btnCapture.textContent = 'Analyzing… 分析中…';
     showStatus('Analyzing… 正在分析…');
     try {
-      var endpoint = (cfg.endpoint || DEFAULTS.endpoint).replace(/\/+$/, '');
       var payload = { image: dataUrl, level: currentLevel };
-      if (cfg.model) payload.model = cfg.model;
 
       var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
       var timer = controller ? setTimeout(function () { controller.abort(); }, 120000) : null;
 
       var res;
       try {
-        res = await fetch(endpoint, {
+        res = await fetch('/vlm-process.php', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-API-Key': cfg.key },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
           signal: controller ? controller.signal : undefined
         });
@@ -287,7 +227,6 @@
       try { data = JSON.parse(text); } catch (e) {}
 
       if (!res.ok || !data || data.ok !== true) {
-        if (res.status === 401) $('settingsModal').classList.add('show');
         var msg = data && data.error && data.error.message
           ? data.error.message
           : ('API ' + res.status + ': ' + text.slice(0, 200));

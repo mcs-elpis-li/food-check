@@ -17,15 +17,15 @@ Live site: **https://food-check.elpis.li/**
 - Server-side image preprocessing: validation, EXIF orientation, downscale to
   1000x1000 px max, transparency flattening and JPEG re-encoding.
 - VLM JSON response normalised by the backend, with bilingual English and Chinese results.
-- Settings modal (gear icon) for the backend API key and optional model override.
-- Same-origin proxy by default, optional CORS allow-list, per-IP rate limiting.
+- Fixed backend endpoint (`/vlm-process.php`); no settings dialog or client-side configuration.
+- Same-origin proxy by default, optional API key for external clients, optional CORS allow-list, per-IP rate limiting.
 
 ## Architecture
 
 ```
 Browser (index.html)
    |  POST /vlm-process.php  { image: data URL, level }
-   |  X-API-Key: <APP_API_KEY>
+   |  same-origin request (no key needed)
    v
 vlm-process.php --> config.php --> config.secrets.php
    |  validate + resize image (GD)
@@ -69,13 +69,14 @@ chmod 640 config.secrets.php
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `APP_API_KEY` | none (required) | Key the browser sends as `X-API-Key` or `Authorization: Bearer`. |
+| `APP_API_KEY` | none (required) | Key for non-browser/API clients, sent as `X-API-Key` or `Authorization: Bearer`. Same-origin page requests do not need it. |
 | `VLM_BASE_URL` | none (required) | OpenAI-compatible base URL, for example `https://host/v1`. |
 | `VLM_MODEL` | none (required) | Model name. **It must support image input.** |
 | `VLM_API_KEY` | none (required) | Upstream VLM key (server-side only). |
 | `APP_MAX_DIMENSION` | `1000` | Longest side of the image sent to the VLM. |
 | `APP_JPEG_QUALITY` | `85` | Re-encode quality (50-95). |
 | `APP_ALLOWED_ORIGINS` | empty | Comma-separated CORS origins; empty means same-origin only, `*` allows any origin. |
+| `APP_ALLOW_SAME_ORIGIN` | `1` | Let the browser page call the proxy without an API key. Set to `0` to require the key everywhere. |
 | `APP_RATE_LIMIT` | `60` | Requests per IP per window; `0` disables the limit. |
 | `APP_RATE_WINDOW` | `60` | Rate-limit window in seconds. |
 | `VLM_TIMEOUT` | `90` | Upstream request timeout in seconds. |
@@ -83,19 +84,19 @@ chmod 640 config.secrets.php
 | `VLM_TEMPERATURE` | `0.2` | Sampling temperature. |
 | `VLM_DISABLE_THINKING` | `1` | Disable Qwen3 reasoning tokens so the output budget is used for JSON. |
 
-Generate a new backend key:
+Generate a key for external API clients:
 
 ```bash
 openssl rand -hex 32
 ```
 
-Put it in `config.secrets.php` as `APP_API_KEY`, then enter the **same value** once per
-device in the app: **Settings (gear icon) -> Backend API Key -> Save**. It is stored in
-`localStorage`; the backend answers `401` if it is missing or wrong.
+Put it in `config.secrets.php` as `APP_API_KEY`. The browser page does not need it:
+same-origin requests are trusted, because the page itself is the client. Set
+`APP_ALLOW_SAME_ORIGIN=0` if you want to require the key for every request.
 
-The site is a static page, so a key typed by the user is the only way to avoid publishing
-the key in the HTML source. If you embed it in JavaScript, treat it as public and rely on
-the rate limit.
+The site is a static page, so the key cannot be kept secret inside the browser. Keeping it
+out of `index.html` and requiring it only for non-same-origin clients avoids publishing it
+while still protecting programmatic access.
 
 ### Model notes
 
@@ -123,6 +124,9 @@ Headers:
 Content-Type: application/json
 X-API-Key: <APP_API_KEY>
 ```
+
+`X-API-Key` is required for non-browser clients such as `curl` and for other origins.
+Requests made by the page itself are same-origin and do not need a key.
 
 Body:
 
@@ -193,13 +197,13 @@ reply; the frontend shows the raw text.
 Errors are JSON with an HTTP status:
 
 ```json
-{ "ok": false, "error": { "code": "unauthorized", "message": "Invalid or missing API key. Add the backend key in Settings." } }
+{ "ok": false, "error": { "code": "unauthorized", "message": "Missing or invalid API key." } }
 ```
 
 | Status | Code | Meaning |
 | --- | --- | --- |
 | 400 | `invalid_json`, `invalid_image`, `invalid_level` | Bad request. |
-| 401 | `unauthorized` | Missing or wrong `X-API-Key`. |
+| 401 | `unauthorized` | Missing or wrong `X-API-Key` for a non-same-origin request. |
 | 405 | `method_not_allowed` | Use `POST`. |
 | 413 | `image_too_large`, `request_too_large` | Payload too large. |
 | 415 | `unsupported_type`, `unsupported_content_type` | Not JPEG/PNG/WebP or wrong body type. |
@@ -229,6 +233,8 @@ performs the authoritative 1000 px resize.
 - The old `.env` was removed from the web root. Use `FOOD_CHECK_ENV` pointing outside the
   document root if you prefer an env file.
 - CORS is same-origin by default; add origins to `APP_ALLOWED_ORIGINS` only when needed.
+- Same-origin page requests are trusted; set `APP_ALLOW_SAME_ORIGIN=0` to require
+  `APP_API_KEY` for every request.
 - Per-IP rate limiting uses files in the system temp directory (no database required).
 - Uploads are capped and validated; remote image URLs are not accepted (no SSRF).
 - The repository `.git` directory is mode `700`, so nginx (running as `www-data`) cannot
@@ -259,7 +265,7 @@ your external env file).
 
 | Symptom | Fix |
 | --- | --- |
-| "Please enter the backend API key" or `401` | Copy `APP_API_KEY` from `config.secrets.php` into Settings -> Backend API Key. |
+| `401 unauthorized` | Requests from the page itself normally pass. If you are calling from `curl` or another origin, send `X-API-Key`. |
 | `vision_not_supported` | The model rejects images; set `VLM_MODEL` to a vision-capable model. |
 | `upstream_unreachable` | Check `VLM_BASE_URL`, network access, and `VLM_API_KEY`. |
 | `rate_limited` | Wait for `Retry-After`, or raise `APP_RATE_LIMIT`. |

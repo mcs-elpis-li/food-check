@@ -123,6 +123,14 @@ return [
     // CORS: empty list means same-origin only. Use "*" to allow any origin.
     'allowed_origins' => $origins,
 
+    // Let the browser page call the proxy without an API key. Non-browser
+    // clients (and other origins) must still send X-API-Key.
+    'allow_same_origin' => in_array(
+        strtolower($setting('APP_ALLOW_SAME_ORIGIN', '1')),
+        ['1', 'true', 'yes', 'on'],
+        true
+    ),
+
     // Simple per-IP rate limit (0 disables it).
     'rate_limit' => max(0, (int) $setting('APP_RATE_LIMIT', '60')),
     'rate_window' => max(10, (int) $setting('APP_RATE_WINDOW', '60')),

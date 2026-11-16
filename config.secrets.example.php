@@ -25,12 +25,15 @@ return [
     'VLM_MODEL' => 'your-vision-model',
     'VLM_API_KEY' => 'sk_replace_me',
 
-    // Shared key the browser sends to vlm-process.php (Settings ⚙).
+    // Shared key for non-same-origin API clients (X-API-Key).
     // Generate with: openssl rand -hex 32
     'APP_API_KEY' => 'fc_replace_with_a_long_random_value',
 
     // Extra CORS origins (comma-separated). Empty = same-origin only.
     'APP_ALLOWED_ORIGINS' => '',
+
+    // Allow the page itself to call the proxy without a key.
+    'APP_ALLOW_SAME_ORIGIN' => '1',
 
     // Image preprocessing.
     'APP_MAX_DIMENSION' => '1000',
