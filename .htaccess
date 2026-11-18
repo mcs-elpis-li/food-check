@@ -2,6 +2,14 @@
 # already denies dotfiles; keep this file for other deployments.
 Options -Indexes
 
-<FilesMatch "(^\.|^config\.php$)">
+# Never serve the secret/config files directly.
+<FilesMatch "(^\.|^config\.php$|^lib\.php$)">
     Require all denied
 </FilesMatch>
+
+# The log viewer is a PHP page; deny data files inside the log directory.
+<DirectoryMatch "/log/">
+    <FilesMatch "\.(log|json|jpg|jpeg|png|csv|txt)$">
+        Require all denied
+    </FilesMatch>
+</DirectoryMatch>

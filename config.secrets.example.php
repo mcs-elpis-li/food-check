@@ -52,6 +52,13 @@ return [
     // Generate with: openssl rand -hex 32
     'APP_API_KEY' => 'fc_replace_with_a_long_random_value',
 
+    // Secret used to sign the short-lived browser tokens. Use a different
+    // value from APP_API_KEY so a leaked key cannot forge tokens.
+    'APP_TOKEN_SECRET' => 'replace_with_another_long_random_value',
+    // Token lifetime in seconds and the refresh margin.
+    'APP_TOKEN_TTL' => '300',
+    'APP_TOKEN_MIN_REFRESH' => '30',
+
     // Extra CORS origins (comma-separated). Empty = same-origin only.
     'APP_ALLOWED_ORIGINS' => '',
 

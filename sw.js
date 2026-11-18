@@ -1,8 +1,6 @@
 /* Food Check service worker: network-first pages, cache-first static assets. */
-const CACHE = 'food-check-v5';
+const CACHE = 'food-check-v7';
 const ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/icon.svg?v=2',
   '/icon-192.png?v=2',
@@ -33,11 +31,25 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname === '/vlm-process.php') return;
 
-  const isPage = request.mode === 'navigate'
-    || url.pathname === '/'
-    || url.pathname.endsWith('.html');
+  // Never cache the API, the token endpoint or the log viewer: they are
+  // per-session and carry credentials. The page itself embeds a signed token,
+  // so it is always fetched from the network as well.
+  if (url.pathname === '/vlm-process.php'
+    || url.pathname === '/token.php'
+    || url.pathname.startsWith('/log/')
+    || url.pathname === '/index.php'
+    || url.pathname === '/') {
+    event.respondWith(
+      fetch(request).catch(() => new Response('Offline', {
+        status: 503,
+        headers: { 'Content-Type': 'text/plain' }
+      }))
+    );
+    return;
+  }
+
+  const isPage = url.pathname.endsWith('.php') || url.pathname.endsWith('.html');
 
   if (isPage) {
     event.respondWith(
@@ -49,11 +61,10 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => caches.match(request).then((cached) => cached || caches.match('/index.html')))
-        .then((response) => response || new Response('Offline', {
+        .catch(() => caches.match(request).then((cached) => cached || new Response('Offline', {
           status: 503,
           headers: { 'Content-Type': 'text/plain' }
-        }))
+        })))
     );
     return;
   }

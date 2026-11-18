@@ -1,12 +1,37 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * Food Check web app.
+ *
+ * The page is served as PHP so it can embed a short-lived signed token for
+ * /vlm-process.php. The long-lived API key never reaches the browser.
+ */
+
+$config = require __DIR__ . '/config.php';
+require __DIR__ . '/lib.php';
+
+header('Cache-Control: no-store');
+header('X-Content-Type-Options: nosniff');
+header('Referrer-Policy: same-origin');
+
+try {
+    $fcToken = fc_token_issue($config);
+} catch (Throwable $fcError) {
+    error_log('food-check: could not issue token: ' . $fcError->getMessage());
+    $fcToken = ['token' => '', 'expires_at' => 0];
+}
+?>
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#d81b60">
 <meta name="description" content="Food texture checker for people with swallowing difficulty. 吞嚥困難人士的食物質地檢查工具。">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Food Check">
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" type="image/svg+xml" href="/icon.svg?v=2">
@@ -24,23 +49,41 @@
     --red: #b91c1c; --red-bg: #fde8e8;
     --border: #f2b8cf;
   }
+  html, body { height: 100%; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang HK", "PingFang SC", "Microsoft JhengHei", sans-serif;
     background: linear-gradient(180deg, #ffe4ef 0, #fff0f6 280px);
     color: var(--text);
-    font-size: 20px; line-height: 1.55; padding-bottom: 90px; min-height: 100vh;
+    font-size: 20px; line-height: 1.55; padding-bottom: 90px;
+    min-height: 100vh; min-height: 100dvh;
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
   }
   header {
     background: linear-gradient(135deg, #d81b60, #ad1457);
-    color: #fff; padding: 14px 16px;
+    color: #fff;
+    padding: 14px 16px;
+    padding-top: calc(14px + env(safe-area-inset-top));
+    padding-right: calc(16px + env(safe-area-inset-right));
+    padding-left: calc(16px + env(safe-area-inset-left));
     position: sticky; top: 0; z-index: 10;
     box-shadow: 0 3px 12px rgba(173, 20, 87, .28);
   }
   .brand { display: flex; align-items: center; gap: 12px; max-width: 640px; margin: 0 auto; }
+  .fs-btn {
+    margin-left: auto; background: rgba(255,255,255,.22); border: none; color: #fff;
+    font-size: 20px; width: 46px; height: 46px; border-radius: 12px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .fs-btn:active { transform: scale(.94); }
   .app-icon { width: 52px; height: 52px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.2); background: #fff; }
   header h1 { font-size: 24px; font-weight: 800; line-height: 1.15; }
   header .sub { font-size: 15px; opacity: .95; }
-  main { padding: 14px; max-width: 640px; margin: 0 auto; }
+  main {
+    padding: 14px; max-width: 640px; margin: 0 auto;
+    padding-bottom: calc(90px + env(safe-area-inset-bottom));
+    min-height: calc(100dvh - 92px);
+  }
   .card {
     background: var(--card); border: 1px solid var(--pink-border);
     border-radius: 18px; padding: 16px; margin-bottom: 14px;
@@ -162,6 +205,7 @@
       <h1>Food Texture Checker</h1>
       <div class="sub">食物質地檢查 · 吞嚥友好</div>
     </div>
+    <button class="fs-btn" id="btnFullscreen" type="button" title="Full screen 全屏" aria-label="Full screen 全屏">⛶</button>
   </div>
 </header>
 <main>
@@ -206,11 +250,65 @@
 </main>
 
 <script>
+window.FC_TOKEN = <?= json_encode($fcToken['token']) ?>;
+window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
+</script>
+<script>
 (function () {
   'use strict';
 
   // ---------- IDDSI ----------
   var currentLevel = 'soft';
+
+  // ---------- Signed API token ----------
+  // The server hands the page a short-lived signed token. It is refreshed
+  // before it expires, whenever the tab becomes visible again, and right
+  // before every request, so an idle tab never breaks.
+  var tokenValue = window.FC_TOKEN || '';
+  var tokenExpires = (window.FC_TOKEN_EXP || 0) * 1000;
+  var tokenPromise = null;
+  var TOKEN_MARGIN = 30000;
+
+  function tokenFresh() {
+    return !!tokenValue && Date.now() < tokenExpires - TOKEN_MARGIN;
+  }
+
+  function refreshToken() {
+    if (tokenPromise) return tokenPromise;
+    tokenPromise = fetch('/token.php', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' },
+      cache: 'no-store'
+    })
+      .then(function (r) {
+        return r.json().then(function (d) { return { ok: r.ok, data: d }; });
+      })
+      .then(function (res) {
+        if (!res.ok || !res.data || !res.data.token) {
+          throw new Error((res.data && res.data.error && res.data.error.message) || 'Token request failed.');
+        }
+        tokenValue = res.data.token;
+        tokenExpires = (res.data.expires_at || 0) * 1000;
+        return tokenValue;
+      })
+      .finally(function () { tokenPromise = null; });
+    return tokenPromise;
+  }
+
+  function ensureToken() {
+    if (tokenFresh()) return Promise.resolve(tokenValue);
+    return refreshToken();
+  }
+
+  function keepTokenAlive() {
+    if (!document.hidden) ensureToken().catch(function () {});
+  }
+
+  document.addEventListener('visibilitychange', keepTokenAlive);
+  window.addEventListener('focus', keepTokenAlive);
+  window.addEventListener('pageshow', keepTokenAlive);
+  window.addEventListener('online', keepTokenAlive);
+  setInterval(keepTokenAlive, 4 * 60 * 1000);
 
   var $ = function (id) { return document.getElementById(id); };
   var video = $('video'), camBox = $('camBox'), camPlaceholder = $('camPlaceholder');
@@ -316,12 +414,26 @@
 
       var res;
       try {
+        // Always use a fresh token: the page may have been idle for a while.
+        var token = await ensureToken();
         res = await fetch('/vlm-process.php', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-VLM-Token': token },
           body: JSON.stringify(payload),
           signal: controller ? controller.signal : undefined
         });
+
+        // A token can expire between the refresh and the request: retry once.
+        if (res.status === 401) {
+          tokenValue = '';
+          var fresh = await refreshToken();
+          res = await fetch('/vlm-process.php', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-VLM-Token': fresh },
+            body: JSON.stringify(payload),
+            signal: controller ? controller.signal : undefined
+          });
+        }
       } finally {
         if (timer) clearTimeout(timer);
       }
@@ -759,6 +871,34 @@
     showStatus('Done. 分析完成。');
     setupSpeech(j);
   }
+
+  // ---------- Full screen ----------
+  function isFullscreen() {
+    if (document.fullscreenElement || document.webkitFullscreenElement) return true;
+    if (window.matchMedia && window.matchMedia('(display-mode: fullscreen)').matches) return true;
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return true;
+    return window.navigator.standalone === true;
+  }
+
+  function syncFullscreenButton() {
+    $('btnFullscreen').classList.toggle('hidden', isFullscreen());
+  }
+
+  $('btnFullscreen').addEventListener('click', function () {
+    var root = document.documentElement;
+    var request = root.requestFullscreen || root.webkitRequestFullscreen || root.msRequestFullscreen;
+    if (request) {
+      Promise.resolve(request.call(root)).then(syncFullscreenButton).catch(function () {});
+      return;
+    }
+    // iOS Safari has no fullscreen API on iPhone: offer the home-screen hint.
+    showStatus('On iPhone, tap Share then "Add to Home Screen" for full screen. 在 iPhone 上請按「分享」→「加入主畫面」以全屏顯示。');
+  });
+
+  document.addEventListener('fullscreenchange', syncFullscreenButton);
+  document.addEventListener('webkitfullscreenchange', syncFullscreenButton);
+  window.addEventListener('orientationchange', function () { setTimeout(syncFullscreenButton, 200); });
+  syncFullscreenButton();
 
   // ---------- Cleanup ----------
   window.addEventListener('pagehide', function () {

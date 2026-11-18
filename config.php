@@ -99,6 +99,11 @@ return [
     // Shared secret expected from the browser (X-API-Key / Bearer token).
     'app_api_key' => $setting('APP_API_KEY', ''),
 
+    // Short-lived signed tokens for the browser page.
+    'token_ttl' => max(60, (int) $setting('APP_TOKEN_TTL', '300')),
+    'token_secret' => $setting('APP_TOKEN_SECRET', ''),
+    'token_min_refresh' => max(15, (int) $setting('APP_TOKEN_MIN_REFRESH', '30')),
+
     // Vision-language model service.
     'vlm_base_url' => rtrim($setting('VLM_BASE_URL', $setting('OPENAI_BASE_URL', '')), '/'),
     'vlm_model' => $setting('VLM_MODEL', $setting('OPENAI_MODEL', '')),
