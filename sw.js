@@ -1,7 +1,10 @@
 /* Food Check service worker: network-first pages, cache-first static assets. */
-const CACHE = 'food-check-v7';
+const CACHE = 'food-check-v8';
 const ASSETS = [
   '/manifest.json',
+  '/lang.js?v=1',
+  '/fonts/nunito-latin.woff2',
+  '/fonts/nunito-latin-ext.woff2',
   '/icon.svg?v=2',
   '/icon-192.png?v=2',
   '/icon-512.png?v=2',

@@ -36,6 +36,10 @@ Live site: **https://food-check.elpis.li/**
 - **Installable web app** - a manifest, icons and a service worker make it installable on
   Android and iOS. The installed app runs full screen without browser chrome, and a
   **full screen** button in the header hides the browser bars on the spot.
+- **Settings panel** (⚙ **設定** in the header) - answer language, long-term conditions,
+  text size, theme, text colour, font type and speech, all changeable at any time.
+- **Saved profile** - every setting is written to the device (localStorage, mirrored to a
+  cookie) and restored on the next visit, with no flash of the wrong theme on load.
 - **Elderly-friendly UI** - pink theme, 20px base text, 60px touch targets, high contrast,
   large result text and browser zoom enabled.
 
@@ -104,6 +108,46 @@ The browser never talks to the vision model directly. That means:
 - the image can be resized and stripped before it is sent, which keeps the request small
   and the answer consistent,
 - a second model can take over automatically when the first one fails.
+
+## Settings
+
+The **⚙ 設定** button in the top-right corner opens a panel. Everything applies instantly and
+is remembered on the device.
+
+| Setting | Options |
+| --- | --- |
+| **Answer language 回應語言** | 95 choices: English, 繁體中文, 廣東話, 简体中文, Español, Français, Deutsch, 日本語, 한국어, Português, Nederlands, Русский, العربية, हिन्दी, ไทย, Tiếng Việt, Bahasa Indonesia, Bahasa Melayu, Tagalog, Polski, Türkçe, Svenska, Dansk, Norsk, Suomi, Čeština, Slovenčina, Magyar, Română, Ελληνικά, עברית, Українська, Български, Hrvatski, Српски, Català, Euskara, Galego, Íslenska, Gaeilge, Cymraeg, Eesti, Latviešu, Lietuvių, Shqip, Македонски, Bosanski, Беларуская, Қазақша, Oʻzbekcha, Монгол, ქართული, Հայերեն, বাংলা, اردو, فارسی, தமிழ், తెలుగు, മലയാളം, मराठी, ગુજરાતી, ਪੰਜਾਬੀ, नेपाली, සිංහල, ខ្មែរ, ລາວ, မြန်မာ, Kiswahili, Afrikaans, አማርኛ, Hausa, Yorùbá, Igbo, isiZulu, isiXhosa, Soomaali, Esperanto, Latina, Malti, Māori, Gagana Sāmoa, Filipino, Cebuano, Basa Jawa, Basa Sunda, ʻŌlelo Hawaiʻi, Gàidhlig, Brezhoneg, Occitan, Corsu, Lëtzebuergesch, Frysk, ייִדיש, and **Both 兩者**.
+| **Long-term conditions 長期病患** | Multi-select: 糖尿病 Diabetes, 心臟病 Heart disease, 中風 Stroke, 腎病 Kidney disease, 肝病 Liver disease, 高血壓 High blood pressure, 高膽固醇 High cholesterol, 痛風 Gout. The analysis focuses on the conditions you picked. |
+| **Text size 字體大小** | Extra small → Largest (6 steps, scales the whole interface). |
+| **Theme 主題** | 14 themes, each with its own surface **and** accent colour: Pink, Rose, Blue, Green, Purple, Sunset, Teal, Slate, Sepia, Crimson, Navy, Dark, Midnight, High contrast. |
+| **Text colour 字體顏色** | Default, Black, Grey, Brown, Navy, Green, Maroon. |
+| **Font type 字型** | System, Rounded (self-hosted Nunito), Serif, Mono, Slab, Humanist. |
+| **Speak results 語音朗讀** | On, Off, English only, Chinese only. |
+
+The first choices of every group are shown directly; the rest sit behind a **More 更多**
+button, which expands and collapses that group only.
+
+### How the settings reach the model
+
+The answer language and the selected conditions are sent with every request and change the
+prompt:
+
+- **Language** - the model is told to write the whole answer in that language and to leave
+  the other language's fields empty. (The model needs its reasoning mode enabled to follow
+  this reliably, so single-language answers use a slightly larger output budget.)
+- **Conditions** - the model is told which long-term conditions the person has, is told to
+  give health notes only for those, and is asked to make the safer-food suggestions
+  relevant to them (salt, sugar, oil, purines, potassium, sodium, fluid).
+
+### How the settings are stored
+
+- The profile is saved to `localStorage` under `fc_profile_v1` and mirrored to a cookie, so
+  it survives a refresh even when a browser blocks localStorage (private mode, strict
+  cookie settings).
+- A small script in the page head applies the saved theme, font, colour and text size
+  **before the first paint**, so the page never flashes the default colours.
+- Nothing about the profile leaves the device; it is not sent to the server except the
+  language and conditions, which are part of the analysis request.
 
 ## What information it gives out
 

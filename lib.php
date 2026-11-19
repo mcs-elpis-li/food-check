@@ -577,6 +577,636 @@ function fc_rate_limit(array $config, string $ip): void
 
 
 /**
+ * The answer languages the app can request.
+ *
+ * `field` says which JSON field the model should fill:
+ *   en   -> fill the _en fields, leave _zh empty
+ *   zh   -> fill the _zh fields, leave _en empty
+ *   both -> fill both fields with the same meaning
+ *
+ * @return array<string, array{label: string, label_zh: string, field: string, tts: string}>
+ */
+function fc_languages(): array
+{
+    return [
+        'en' => [
+            'label' => 'English',
+            'label_zh' => '英文',
+            'field' => 'en',
+            'tts' => 'en-US',
+        ],
+        'zh' => [
+            'label' => '繁體中文',
+            'label_zh' => '繁體中文（香港）',
+            'field' => 'zh',
+            'tts' => 'zh-HK',
+        ],
+        'yue' => [
+            'label' => '廣東話',
+            'label_zh' => '粵語（書面繁體）',
+            'field' => 'zh',
+            'tts' => 'zh-HK',
+        ],
+        'zh_cn' => [
+            'label' => '简体中文',
+            'label_zh' => '簡體中文',
+            'field' => 'zh',
+            'tts' => 'zh-CN',
+        ],
+        'es' => [
+            'label' => 'Español',
+            'label_zh' => '西班牙文',
+            'field' => 'en',
+            'tts' => 'es-ES',
+        ],
+        'fr' => [
+            'label' => 'Français',
+            'label_zh' => '法文',
+            'field' => 'en',
+            'tts' => 'fr-FR',
+        ],
+        'de' => [
+            'label' => 'Deutsch',
+            'label_zh' => '德文',
+            'field' => 'en',
+            'tts' => 'de-DE',
+        ],
+        'ja' => [
+            'label' => '日本語',
+            'label_zh' => '日文',
+            'field' => 'en',
+            'tts' => 'ja-JP',
+        ],
+        'ko' => [
+            'label' => '한국어',
+            'label_zh' => '韓文',
+            'field' => 'en',
+            'tts' => 'ko-KR',
+        ],
+        'it' => [
+            'label' => 'Italiano',
+            'label_zh' => '意大利文',
+            'field' => 'en',
+            'tts' => 'it-IT',
+        ],
+        'pt' => [
+            'label' => 'Português',
+            'label_zh' => '葡萄牙文',
+            'field' => 'en',
+            'tts' => 'pt-PT',
+        ],
+        'nl' => [
+            'label' => 'Nederlands',
+            'label_zh' => '荷蘭文',
+            'field' => 'en',
+            'tts' => 'nl-NL',
+        ],
+        'ru' => [
+            'label' => 'Русский',
+            'label_zh' => '俄文',
+            'field' => 'en',
+            'tts' => 'ru-RU',
+        ],
+        'ar' => [
+            'label' => 'العربية',
+            'label_zh' => '阿拉伯文',
+            'field' => 'en',
+            'tts' => 'ar-SA',
+        ],
+        'hi' => [
+            'label' => 'हिन्दी',
+            'label_zh' => '印地語',
+            'field' => 'en',
+            'tts' => 'hi-IN',
+        ],
+        'th' => [
+            'label' => 'ไทย',
+            'label_zh' => '泰語',
+            'field' => 'en',
+            'tts' => 'th-TH',
+        ],
+        'vi' => [
+            'label' => 'Tiếng Việt',
+            'label_zh' => '越南語',
+            'field' => 'en',
+            'tts' => 'vi-VN',
+        ],
+        'id' => [
+            'label' => 'Bahasa Indonesia',
+            'label_zh' => '印尼語',
+            'field' => 'en',
+            'tts' => 'id-ID',
+        ],
+        'ms' => [
+            'label' => 'Bahasa Melayu',
+            'label_zh' => '馬來語',
+            'field' => 'en',
+            'tts' => 'ms-MY',
+        ],
+        'tl' => [
+            'label' => 'Tagalog',
+            'label_zh' => '他加祿語',
+            'field' => 'en',
+            'tts' => 'tl-PH',
+        ],
+        'pl' => [
+            'label' => 'Polski',
+            'label_zh' => '波蘭語',
+            'field' => 'en',
+            'tts' => 'pl-PL',
+        ],
+        'tr' => [
+            'label' => 'Türkçe',
+            'label_zh' => '土耳其語',
+            'field' => 'en',
+            'tts' => 'tr-TR',
+        ],
+        'sv' => [
+            'label' => 'Svenska',
+            'label_zh' => '瑞典語',
+            'field' => 'en',
+            'tts' => 'sv-SE',
+        ],
+        'da' => [
+            'label' => 'Dansk',
+            'label_zh' => '丹麥語',
+            'field' => 'en',
+            'tts' => 'da-DK',
+        ],
+        'no' => [
+            'label' => 'Norsk',
+            'label_zh' => '挪威語',
+            'field' => 'en',
+            'tts' => 'nb-NO',
+        ],
+        'fi' => [
+            'label' => 'Suomi',
+            'label_zh' => '芬蘭語',
+            'field' => 'en',
+            'tts' => 'fi-FI',
+        ],
+        'cs' => [
+            'label' => 'Čeština',
+            'label_zh' => '捷克語',
+            'field' => 'en',
+            'tts' => 'cs-CZ',
+        ],
+        'sk' => [
+            'label' => 'Slovenčina',
+            'label_zh' => '斯洛伐克語',
+            'field' => 'en',
+            'tts' => 'sk-SK',
+        ],
+        'hu' => [
+            'label' => 'Magyar',
+            'label_zh' => '匈牙利語',
+            'field' => 'en',
+            'tts' => 'hu-HU',
+        ],
+        'ro' => [
+            'label' => 'Română',
+            'label_zh' => '羅馬尼亞語',
+            'field' => 'en',
+            'tts' => 'ro-RO',
+        ],
+        'el' => [
+            'label' => 'Ελληνικά',
+            'label_zh' => '希臘語',
+            'field' => 'en',
+            'tts' => 'el-GR',
+        ],
+        'he' => [
+            'label' => 'עברית',
+            'label_zh' => '希伯來語',
+            'field' => 'en',
+            'tts' => 'he-IL',
+        ],
+        'uk' => [
+            'label' => 'Українська',
+            'label_zh' => '烏克蘭語',
+            'field' => 'en',
+            'tts' => 'uk-UA',
+        ],
+        'bg' => [
+            'label' => 'Български',
+            'label_zh' => '保加利亞語',
+            'field' => 'en',
+            'tts' => 'bg-BG',
+        ],
+        'hr' => [
+            'label' => 'Hrvatski',
+            'label_zh' => '克羅地亞語',
+            'field' => 'en',
+            'tts' => 'hr-HR',
+        ],
+        'sr' => [
+            'label' => 'Српски',
+            'label_zh' => '塞爾維亞語',
+            'field' => 'en',
+            'tts' => 'sr-RS',
+        ],
+        'ca' => [
+            'label' => 'Català',
+            'label_zh' => '加泰隆尼亞語',
+            'field' => 'en',
+            'tts' => 'ca-ES',
+        ],
+        'eu' => [
+            'label' => 'Euskara',
+            'label_zh' => '巴斯克語',
+            'field' => 'en',
+            'tts' => 'eu-ES',
+        ],
+        'gl' => [
+            'label' => 'Galego',
+            'label_zh' => '加利西亞語',
+            'field' => 'en',
+            'tts' => 'gl-ES',
+        ],
+        'is' => [
+            'label' => 'Íslenska',
+            'label_zh' => '冰島語',
+            'field' => 'en',
+            'tts' => 'is-IS',
+        ],
+        'ga' => [
+            'label' => 'Gaeilge',
+            'label_zh' => '愛爾蘭語',
+            'field' => 'en',
+            'tts' => 'ga-IE',
+        ],
+        'cy' => [
+            'label' => 'Cymraeg',
+            'label_zh' => '威爾士語',
+            'field' => 'en',
+            'tts' => 'cy-GB',
+        ],
+        'et' => [
+            'label' => 'Eesti',
+            'label_zh' => '愛沙尼亞語',
+            'field' => 'en',
+            'tts' => 'et-EE',
+        ],
+        'lv' => [
+            'label' => 'Latviešu',
+            'label_zh' => '拉脫維亞語',
+            'field' => 'en',
+            'tts' => 'lv-LV',
+        ],
+        'lt' => [
+            'label' => 'Lietuvių',
+            'label_zh' => '立陶宛語',
+            'field' => 'en',
+            'tts' => 'lt-LT',
+        ],
+        'sq' => [
+            'label' => 'Shqip',
+            'label_zh' => '阿爾巴尼亞語',
+            'field' => 'en',
+            'tts' => 'sq-AL',
+        ],
+        'mk' => [
+            'label' => 'Македонски',
+            'label_zh' => '馬其頓語',
+            'field' => 'en',
+            'tts' => 'mk-MK',
+        ],
+        'bs' => [
+            'label' => 'Bosanski',
+            'label_zh' => '波斯尼亞語',
+            'field' => 'en',
+            'tts' => 'bs-BA',
+        ],
+        'be' => [
+            'label' => 'Беларуская',
+            'label_zh' => '白俄羅斯語',
+            'field' => 'en',
+            'tts' => 'be-BY',
+        ],
+        'kk' => [
+            'label' => 'Қазақша',
+            'label_zh' => '哈薩克語',
+            'field' => 'en',
+            'tts' => 'kk-KZ',
+        ],
+        'uz' => [
+            'label' => 'Oʻzbekcha',
+            'label_zh' => '烏茲別克語',
+            'field' => 'en',
+            'tts' => 'uz-UZ',
+        ],
+        'mn' => [
+            'label' => 'Монгол',
+            'label_zh' => '蒙古語',
+            'field' => 'en',
+            'tts' => 'mn-MN',
+        ],
+        'ka' => [
+            'label' => 'ქართული',
+            'label_zh' => '格魯吉亞語',
+            'field' => 'en',
+            'tts' => 'ka-GE',
+        ],
+        'hy' => [
+            'label' => 'Հայերեն',
+            'label_zh' => '亞美尼亞語',
+            'field' => 'en',
+            'tts' => 'hy-AM',
+        ],
+        'bn' => [
+            'label' => 'বাংলা',
+            'label_zh' => '孟加拉語',
+            'field' => 'en',
+            'tts' => 'bn-BD',
+        ],
+        'ur' => [
+            'label' => 'اردو',
+            'label_zh' => '烏爾都語',
+            'field' => 'en',
+            'tts' => 'ur-PK',
+        ],
+        'fa' => [
+            'label' => 'فارسی',
+            'label_zh' => '波斯語',
+            'field' => 'en',
+            'tts' => 'fa-IR',
+        ],
+        'ta' => [
+            'label' => 'தமிழ்',
+            'label_zh' => '泰米爾語',
+            'field' => 'en',
+            'tts' => 'ta-IN',
+        ],
+        'te' => [
+            'label' => 'తెలుగు',
+            'label_zh' => '泰盧固語',
+            'field' => 'en',
+            'tts' => 'te-IN',
+        ],
+        'ml' => [
+            'label' => 'മലയാളം',
+            'label_zh' => '馬拉雅拉姆語',
+            'field' => 'en',
+            'tts' => 'ml-IN',
+        ],
+        'mr' => [
+            'label' => 'मराठी',
+            'label_zh' => '馬拉地語',
+            'field' => 'en',
+            'tts' => 'mr-IN',
+        ],
+        'gu' => [
+            'label' => 'ગુજરાતી',
+            'label_zh' => '古吉拉特語',
+            'field' => 'en',
+            'tts' => 'gu-IN',
+        ],
+        'pa' => [
+            'label' => 'ਪੰਜਾਬੀ',
+            'label_zh' => '旁遮普語',
+            'field' => 'en',
+            'tts' => 'pa-IN',
+        ],
+        'ne' => [
+            'label' => 'नेपाली',
+            'label_zh' => '尼泊爾語',
+            'field' => 'en',
+            'tts' => 'ne-NP',
+        ],
+        'si' => [
+            'label' => 'සිංහල',
+            'label_zh' => '僧伽羅語',
+            'field' => 'en',
+            'tts' => 'si-LK',
+        ],
+        'km' => [
+            'label' => 'ខ្មែរ',
+            'label_zh' => '高棉語',
+            'field' => 'en',
+            'tts' => 'km-KH',
+        ],
+        'lo' => [
+            'label' => 'ລາວ',
+            'label_zh' => '老撾語',
+            'field' => 'en',
+            'tts' => 'lo-LA',
+        ],
+        'my' => [
+            'label' => 'မြန်မာ',
+            'label_zh' => '緬甸語',
+            'field' => 'en',
+            'tts' => 'my-MM',
+        ],
+        'sw' => [
+            'label' => 'Kiswahili',
+            'label_zh' => '斯瓦希里語',
+            'field' => 'en',
+            'tts' => 'sw-KE',
+        ],
+        'af' => [
+            'label' => 'Afrikaans',
+            'label_zh' => '南非荷蘭語',
+            'field' => 'en',
+            'tts' => 'af-ZA',
+        ],
+        'am' => [
+            'label' => 'አማርኛ',
+            'label_zh' => '阿姆哈拉語',
+            'field' => 'en',
+            'tts' => 'am-ET',
+        ],
+        'ha' => [
+            'label' => 'Hausa',
+            'label_zh' => '豪薩語',
+            'field' => 'en',
+            'tts' => 'ha-NG',
+        ],
+        'yo' => [
+            'label' => 'Yorùbá',
+            'label_zh' => '約魯巴語',
+            'field' => 'en',
+            'tts' => 'yo-NG',
+        ],
+        'ig' => [
+            'label' => 'Igbo',
+            'label_zh' => '伊博語',
+            'field' => 'en',
+            'tts' => 'ig-NG',
+        ],
+        'zu' => [
+            'label' => 'isiZulu',
+            'label_zh' => '祖魯語',
+            'field' => 'en',
+            'tts' => 'zu-ZA',
+        ],
+        'xh' => [
+            'label' => 'isiXhosa',
+            'label_zh' => '科薩語',
+            'field' => 'en',
+            'tts' => 'xh-ZA',
+        ],
+        'so' => [
+            'label' => 'Soomaali',
+            'label_zh' => '索馬利語',
+            'field' => 'en',
+            'tts' => 'so-SO',
+        ],
+        'eo' => [
+            'label' => 'Esperanto',
+            'label_zh' => '世界語',
+            'field' => 'en',
+            'tts' => 'eo-UN',
+        ],
+        'la' => [
+            'label' => 'Latina',
+            'label_zh' => '拉丁語',
+            'field' => 'en',
+            'tts' => 'la-VA',
+        ],
+        'mt' => [
+            'label' => 'Malti',
+            'label_zh' => '馬耳他語',
+            'field' => 'en',
+            'tts' => 'mt-MT',
+        ],
+        'mi' => [
+            'label' => 'Māori',
+            'label_zh' => '毛利語',
+            'field' => 'en',
+            'tts' => 'mi-NZ',
+        ],
+        'sm' => [
+            'label' => 'Gagana Sāmoa',
+            'label_zh' => '薩摩亞語',
+            'field' => 'en',
+            'tts' => 'sm-WS',
+        ],
+        'fil' => [
+            'label' => 'Filipino',
+            'label_zh' => '菲律賓語',
+            'field' => 'en',
+            'tts' => 'fil-PH',
+        ],
+        'ceb' => [
+            'label' => 'Cebuano',
+            'label_zh' => '宿務語',
+            'field' => 'en',
+            'tts' => 'ceb-PH',
+        ],
+        'jv' => [
+            'label' => 'Basa Jawa',
+            'label_zh' => '爪哇語',
+            'field' => 'en',
+            'tts' => 'jv-ID',
+        ],
+        'su' => [
+            'label' => 'Basa Sunda',
+            'label_zh' => '巽他語',
+            'field' => 'en',
+            'tts' => 'su-ID',
+        ],
+        'haw' => [
+            'label' => 'ʻŌlelo Hawaiʻi',
+            'label_zh' => '夏威夷語',
+            'field' => 'en',
+            'tts' => 'haw-US',
+        ],
+        'gd' => [
+            'label' => 'Gàidhlig',
+            'label_zh' => '蘇格蘭蓋爾語',
+            'field' => 'en',
+            'tts' => 'gd-GB',
+        ],
+        'br' => [
+            'label' => 'Brezhoneg',
+            'label_zh' => '布列塔尼語',
+            'field' => 'en',
+            'tts' => 'br-FR',
+        ],
+        'oc' => [
+            'label' => 'Occitan',
+            'label_zh' => '奧克語',
+            'field' => 'en',
+            'tts' => 'oc-FR',
+        ],
+        'co' => [
+            'label' => 'Corsu',
+            'label_zh' => '科西嘉語',
+            'field' => 'en',
+            'tts' => 'co-FR',
+        ],
+        'lb' => [
+            'label' => 'Lëtzebuergesch',
+            'label_zh' => '盧森堡語',
+            'field' => 'en',
+            'tts' => 'lb-LU',
+        ],
+        'fy' => [
+            'label' => 'Frysk',
+            'label_zh' => '弗里西語',
+            'field' => 'en',
+            'tts' => 'fy-NL',
+        ],
+        'yi' => [
+            'label' => 'ייִדיש',
+            'label_zh' => '意第緒語',
+            'field' => 'en',
+            'tts' => 'yi',
+        ],
+        'both' => [
+            'label' => 'Both 兩者',
+            'label_zh' => '英文 + 繁體中文',
+            'field' => 'both',
+            'tts' => 'en-US',
+        ],
+    ];
+}
+
+/**
+ * The long-term conditions the app can reason about.
+ *
+ * @return list<string>
+ */
+function fc_health_conditions(): array
+{
+    return [
+        'diabetes', 'heart_disease', 'stroke', 'kidney_disease', 'liver_disease',
+        'hypertension', 'high_cholesterol', 'gout',
+    ];
+}
+
+/**
+ * Normalise a list of condition keys coming from the client.
+ *
+ * @return list<string>
+ */
+function fc_condition_list(mixed $value): array
+{
+    if (is_string($value)) {
+        $value = preg_split('/[,;]+/', $value) ?: [];
+    }
+    if (!is_array($value)) {
+        return [];
+    }
+
+    $allowed = fc_health_conditions();
+    $out = [];
+    foreach ($value as $item) {
+        if (!is_scalar($item)) {
+            continue;
+        }
+        $key = strtolower(trim((string) $item));
+        $key = preg_replace('/[^a-z]+/', '_', $key) ?? '';
+        $key = trim($key, '_');
+        if (in_array($key, $allowed, true) && !in_array($key, $out, true)) {
+            $out[] = $key;
+        }
+    }
+
+    return $out;
+}
+
+/**
  * Base64url decode that tolerates missing padding.
  */
 function fc_base64url_decode(string $value): string|false

@@ -37,48 +37,267 @@ try {
 <link rel="icon" type="image/svg+xml" href="/icon.svg?v=2">
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png?v=2">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2">
+<script>
+// Apply the saved profile before the first paint so the theme never flashes.
+(function () {
+  var SCALE = { xs: 0.78, s: 0.88, m: 1, l: 1.16, xl: 1.32, xxl: 1.5 };
+  var THEMES = ['pink','rose','ocean','forest','grape','sunset','teal','slate','sepia','crimson','navy','dark','midnight','contrast'];
+  var COLORS = ['default','dark','soft','warm','navy','green','maroon'];
+  var FONTS = ['system','rounded','serif','mono','slab','humanist'];
+  var p = {};
+  try {
+    p = JSON.parse(localStorage.getItem('fc_profile_v1') || '{}') || {};
+  } catch (e) { p = {}; }
+  // localStorage can throw (private mode, blocked cookies). The cookie mirror
+  // is read separately so it still works when storage is unavailable.
+  if (!p || !Object.keys(p).length) {
+    try {
+      var m = document.cookie.match(/(?:^|;\s*)fc_profile=([^;]*)/);
+      if (m && m[1]) p = JSON.parse(decodeURIComponent(m[1])) || {};
+    } catch (e) { p = {}; }
+  }
+  var root = document.documentElement;
+  if (THEMES.indexOf(p.theme) >= 0) root.setAttribute('data-theme', p.theme);
+  if (COLORS.indexOf(p.color) >= 0) root.setAttribute('data-color', p.color);
+  if (FONTS.indexOf(p.font) >= 0) root.setAttribute('data-font', p.font);
+  if (SCALE[p.size]) root.style.setProperty('--fs', SCALE[p.size]);
+})();
+</script>
 <title>Food Texture Checker 食物質地檢查器</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
+    :root {
+    --fs: 1;
+    --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang HK", "Microsoft JhengHei", sans-serif;
     --bg: #fff0f6; --card: #ffffff; --text: #2d1b26; --muted: #7a5567;
     --accent: #d81b60; --accent-dark: #a0004a;
     --pink-soft: #ffe4ef; --pink-border: #f2b8cf;
     --green: #0b7a4b; --green-bg: #e2f3e9;
     --orange: #b45309; --orange-bg: #fdf0dd;
-    --red: #b91c1c; --red-bg: #fde8e8;
+    --red: #b91c1c;   --red-bg: #fde8e8;
     --border: #f2b8cf;
+    --grad-a: #d81b60; --grad-b: #ad1457;
+    --item-bg: #fffafc; --hint-bg: #ffe4ef;
+    --tint: #ffe4ef; --tint-border: #f2b8cf;
+    --warn-bg: #fff4e5; --warn-border: #f0a35e; --warn-text: #8a4b00;
+    --danger-bg: #fff1f1; --danger-text: #7a0000; --danger-title: #c00000;
+    --shadow: rgba(216, 27, 96, .10); --shadow-strong: rgba(173, 20, 87, .22);
   }
+
+  /* ---------- Themes (surface + accent in one choice) ---------- */
+  html[data-theme="pink"] {
+    --bg: #fff0f6; --card: #ffffff; --text: #2d1b26; --muted: #7a5567;
+    --accent: #d81b60; --accent-dark: #a0004a;
+    --pink-soft: #ffe4ef; --pink-border: #f2b8cf; --border: #f2b8cf;
+    --grad-a: #d81b60; --grad-b: #ad1457;
+    --item-bg: #fffafc; --hint-bg: #ffe4ef; --tint: #ffe4ef; --tint-border: #f2b8cf;
+    --shadow: rgba(216, 27, 96, .10); --shadow-strong: rgba(173, 20, 87, .22);
+  }
+  html[data-theme="rose"] {
+    --bg: #fff0f2; --card: #ffffff; --text: #3a1220; --muted: #8a4a5c;
+    --accent: #c81e4a; --accent-dark: #961536;
+    --pink-soft: #ffdde3; --pink-border: #f2b3bf; --border: #f2b3bf;
+    --grad-a: #e0325f; --grad-b: #961536;
+    --item-bg: #fff7f8; --hint-bg: #ffdde3; --tint: #ffdde3; --tint-border: #f2b3bf;
+    --shadow: rgba(200, 30, 74, .12); --shadow-strong: rgba(150, 21, 54, .22);
+  }
+  html[data-theme="ocean"] {
+    --bg: #eff6ff; --card: #ffffff; --text: #16243d; --muted: #4b6182;
+    --accent: #1565c0; --accent-dark: #0d47a1;
+    --pink-soft: #dbeafe; --pink-border: #bfd7f7; --border: #bfd7f7;
+    --grad-a: #1565c0; --grad-b: #0d47a1;
+    --item-bg: #f7fbff; --hint-bg: #dbeafe; --tint: #dbeafe; --tint-border: #bfd7f7;
+    --shadow: rgba(21, 101, 192, .12); --shadow-strong: rgba(13, 71, 161, .22);
+  }
+  html[data-theme="forest"] {
+    --bg: #eefaf3; --card: #ffffff; --text: #12291c; --muted: #4a6b57;
+    --accent: #1b7f4b; --accent-dark: #0f5c33;
+    --pink-soft: #d8f3e7; --pink-border: #b3e0cb; --border: #b3e0cb;
+    --grad-a: #12925f; --grad-b: #0f5c33;
+    --item-bg: #f6fdf9; --hint-bg: #d8f3e7; --tint: #d8f3e7; --tint-border: #b3e0cb;
+    --shadow: rgba(18, 128, 92, .12); --shadow-strong: rgba(10, 90, 64, .22);
+  }
+  html[data-theme="grape"] {
+    --bg: #f7f1ff; --card: #ffffff; --text: #241533; --muted: #6a5580;
+    --accent: #7b2cbf; --accent-dark: #5b1f91;
+    --pink-soft: #eddcff; --pink-border: #d3b8f0; --border: #d3b8f0;
+    --grad-a: #8b3fd0; --grad-b: #5b1f91;
+    --item-bg: #fbf7ff; --hint-bg: #eddcff; --tint: #eddcff; --tint-border: #d3b8f0;
+    --shadow: rgba(123, 44, 191, .12); --shadow-strong: rgba(91, 31, 145, .22);
+  }
+  html[data-theme="sunset"] {
+    --bg: #fff4ec; --card: #ffffff; --text: #40230f; --muted: #8a5a38;
+    --accent: #e2560f; --accent-dark: #b3400a;
+    --pink-soft: #ffe4d2; --pink-border: #f6c3a0; --border: #f6c3a0;
+    --grad-a: #f07a22; --grad-b: #c2430a;
+    --item-bg: #fffaf5; --hint-bg: #ffe4d2; --tint: #ffe4d2; --tint-border: #f6c3a0;
+    --shadow: rgba(226, 86, 15, .12); --shadow-strong: rgba(179, 64, 10, .22);
+  }
+  html[data-theme="teal"] {
+    --bg: #edfafa; --card: #ffffff; --text: #0d2e2f; --muted: #47706f;
+    --accent: #0d7f80; --accent-dark: #08595a;
+    --pink-soft: #d2f0f0; --pink-border: #a9dede; --border: #a9dede;
+    --grad-a: #12999a; --grad-b: #08595a;
+    --item-bg: #f5fdfd; --hint-bg: #d2f0f0; --tint: #d2f0f0; --tint-border: #a9dede;
+    --shadow: rgba(13, 127, 128, .12); --shadow-strong: rgba(8, 89, 90, .22);
+  }
+  html[data-theme="slate"] {
+    --bg: #eef1f6; --card: #ffffff; --text: #1f2b3a; --muted: #556478;
+    --accent: #455a70; --accent-dark: #2e3f52;
+    --pink-soft: #dde4ed; --pink-border: #bcc8d6; --border: #bcc8d6;
+    --grad-a: #566d85; --grad-b: #2e3f52;
+    --item-bg: #f6f8fb; --hint-bg: #dde4ed; --tint: #dde4ed; --tint-border: #bcc8d6;
+    --shadow: rgba(69, 90, 112, .12); --shadow-strong: rgba(46, 63, 82, .22);
+  }
+  html[data-theme="sepia"] {
+    --bg: #f8f0e4; --card: #fffdf9; --text: #3d2f1f; --muted: #7a6749;
+    --accent: #a4622a; --accent-dark: #7c4519;
+    --pink-soft: #f0e2cd; --pink-border: #dcc4a2; --border: #dcc4a2;
+    --grad-a: #b8763a; --grad-b: #7c4519;
+    --item-bg: #fdf8f0; --hint-bg: #f0e2cd; --tint: #f0e2cd; --tint-border: #dcc4a2;
+    --shadow: rgba(164, 98, 42, .12); --shadow-strong: rgba(124, 69, 25, .22);
+  }
+  html[data-theme="crimson"] {
+    --bg: #fff1f1; --card: #ffffff; --text: #3d1414; --muted: #8a4a4a;
+    --accent: #c62828; --accent-dark: #8e1c1c;
+    --pink-soft: #ffdede; --pink-border: #f3b3b3; --border: #f3b3b3;
+    --grad-a: #d32f2f; --grad-b: #8e1c1c;
+    --item-bg: #fff7f7; --hint-bg: #ffdede; --tint: #ffdede; --tint-border: #f3b3b3;
+    --shadow: rgba(198, 40, 40, .12); --shadow-strong: rgba(142, 28, 28, .22);
+  }
+  html[data-theme="navy"] {
+    --bg: #eef2f9; --card: #ffffff; --text: #17263f; --muted: #4c6183;
+    --accent: #3d5a80; --accent-dark: #27405e;
+    --pink-soft: #dfe7f1; --pink-border: #bcc9dc; --border: #bcc9dc;
+    --grad-a: #4a6b96; --grad-b: #27405e;
+    --item-bg: #f6f8fc; --hint-bg: #dfe7f1; --tint: #dfe7f1; --tint-border: #bcc9dc;
+    --shadow: rgba(61, 90, 128, .12); --shadow-strong: rgba(39, 64, 94, .22);
+  }
+  html[data-theme="dark"] {
+    --bg: #14121a; --card: #201d29; --text: #f2eef5; --muted: #a89fb4;
+    --accent: #ff7fb0; --accent-dark: #ffb3d0;
+    --pink-soft: #2e2739; --pink-border: #4a3f5a; --border: #3a3346;
+    --green: #6ee7a8; --green-bg: #17301f;
+    --orange: #ffc46b; --orange-bg: #33260f;
+    --red: #ff8f8f;   --red-bg: #3a1c1c;
+    --grad-a: #b03068; --grad-b: #7a1f48;
+    --item-bg: #1c1926; --hint-bg: #2e2739; --tint: #2e2739; --tint-border: #4a3f5a;
+    --warn-bg: #3a2a16; --warn-border: #b07a3a; --warn-text: #ffd8a8;
+    --danger-bg: #3a1c1c; --danger-text: #ffc9c9; --danger-title: #ff8f8f;
+    --shadow: rgba(0, 0, 0, .35); --shadow-strong: rgba(0, 0, 0, .5);
+  }
+  html[data-theme="midnight"] {
+    --bg: #0b1220; --card: #141d2e; --text: #e8eef8; --muted: #9fb0c9;
+    --accent: #7fb3ff; --accent-dark: #a9cbff;
+    --pink-soft: #1b2740; --pink-border: #2d3d5c; --border: #26334a;
+    --green: #6ee7a8; --green-bg: #10291d;
+    --orange: #ffc46b; --orange-bg: #2e2210;
+    --red: #ff8f8f;   --red-bg: #331616;
+    --grad-a: #1e3a6b; --grad-b: #0d1b33;
+    --item-bg: #101827; --hint-bg: #1b2740; --tint: #1b2740; --tint-border: #2d3d5c;
+    --warn-bg: #2e2413; --warn-border: #a8762f; --warn-text: #ffd8a8;
+    --danger-bg: #301717; --danger-text: #ffc9c9; --danger-title: #ff8f8f;
+    --shadow: rgba(0, 0, 0, .4); --shadow-strong: rgba(0, 0, 0, .55);
+  }
+  html[data-theme="contrast"] {
+    --bg: #ffffff; --card: #ffffff; --text: #000000; --muted: #000000;
+    --accent: #0000cc; --accent-dark: #000099;
+    --pink-soft: #ffff00; --pink-border: #000000; --border: #000000;
+    --green: #006400; --green-bg: #e6ffe6;
+    --orange: #8a3b00; --orange-bg: #ffe9d6;
+    --red: #b00000;   --red-bg: #ffe0e0;
+    --grad-a: #000000; --grad-b: #000000;
+    --item-bg: #ffffff; --hint-bg: #ffff00; --tint: #ffff00; --tint-border: #000000;
+    --warn-bg: #ffffcc; --warn-border: #000000; --warn-text: #5a2d00;
+    --danger-bg: #ffe0e0; --danger-text: #7a0000; --danger-title: #b00000;
+    --shadow: rgba(0, 0, 0, .2); --shadow-strong: rgba(0, 0, 0, .35);
+  }
+
+  /* ---------- Self-hosted rounded font (Latin only; CJK falls back) ---------- */
+  @font-face {
+    font-family: 'Nunito';
+    font-style: normal;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url('/fonts/nunito-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'Nunito';
+    font-style: normal;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url('/fonts/nunito-latin-ext.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+  }
+
+  /* ---------- Font family ---------- */
+  /* system: the native UI font. */
+  html[data-font="system"] { --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang HK", "Microsoft JhengHei", sans-serif; }
+  /* rounded: the self-hosted Nunito face (Latin); Chinese keeps the system face. */
+  html[data-font="rounded"] { --font-family: "Nunito", "Quicksand", "Varela Round", ui-rounded, "PingFang HK", "Microsoft JhengHei", sans-serif; }
+  /* serif: slab/old-style for Latin, Song style for Chinese. */
+  html[data-font="serif"] { --font-family: Georgia, "Times New Roman", "Songti TC", "Noto Serif CJK TC", "PMingLiU", serif; }
+  /* sans: neutral grotesque, no native UI styling. */
+  /* mono: fixed pitch. */
+  html[data-font="mono"] { --font-family: ui-monospace, "SF Mono", "DejaVu Sans Mono", Menlo, Consolas, monospace; }
+  /* slab: heavy square serifs. */
+  html[data-font="slab"] { --font-family: Rockwell, "Arvo", "Roboto Slab", "Courier New", "Songti TC", serif; }
+  /* humanist: open, calligraphic forms. */
+  html[data-font="humanist"] { --font-family: Optima, Candara, "Gill Sans", "Trebuchet MS", "PingFang HK", "Microsoft JhengHei", sans-serif; }
+  /* condensed: narrow forms. */
+  /* kai: brush-style Kai for Chinese, clean serif for Latin. */
+  /* traditional: Ming/serif Chinese, Times for Latin. */
+
+  /* ---------- Text colour ---------- */
+  html[data-color="dark"] { --text: #101010; }
+  html[data-color="soft"] { --text: #6b6b6b; }
+  html[data-color="warm"] { --text: #4a2c1a; }
+  html[data-color="navy"] { --text: #1d3357; }
+  html[data-color="green"] { --text: #123d27; }
+  html[data-color="maroon"] { --text: #5c1024; }
+  html[data-theme="dark"] html[data-color="dark"] { --text: #f2eef5; }
+  html[data-theme="dark"] html[data-color="soft"] { --text: #b8b0c2; }
+  html[data-theme="dark"] html[data-color="warm"] { --text: #f0dcc8; }
+  html[data-theme="dark"] html[data-color="navy"] { --text: #bcd0f0; }
+  html[data-theme="dark"] html[data-color="green"] { --text: #b4e8ca; }
+  html[data-theme="dark"] html[data-color="maroon"] { --text: #f2b6c6; }
+  html[data-theme="midnight"] html[data-color="dark"] { --text: #e8eef8; }
+  html[data-theme="midnight"] html[data-color="soft"] { --text: #a9b8cf; }
+  html[data-theme="midnight"] html[data-color="warm"] { --text: #e8d6c0; }
+  html[data-theme="midnight"] html[data-color="navy"] { --text: #b6cdf0; }
+  html[data-theme="midnight"] html[data-color="green"] { --text: #b0e6c8; }
+  html[data-theme="midnight"] html[data-color="maroon"] { --text: #f0b4c4; }
   html, body { height: 100%; }
   body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang HK", "PingFang SC", "Microsoft JhengHei", sans-serif;
-    background: linear-gradient(180deg, #ffe4ef 0, #fff0f6 280px);
+    font-family: var(--font-family);
+    background: linear-gradient(180deg, var(--pink-soft) 0, var(--bg) 280px);
     color: var(--text);
-    font-size: 20px; line-height: 1.55; padding-bottom: 90px;
+    font-size: calc(20px * var(--fs)); line-height: 1.55; padding-bottom: 90px;
     min-height: 100vh; min-height: 100dvh;
     overscroll-behavior-y: none;
     -webkit-tap-highlight-color: transparent;
   }
   header {
-    background: linear-gradient(135deg, #d81b60, #ad1457);
+    background: linear-gradient(135deg, var(--grad-a), var(--grad-b));
     color: #fff;
     padding: 14px 16px;
     padding-top: calc(14px + env(safe-area-inset-top));
     padding-right: calc(16px + env(safe-area-inset-right));
     padding-left: calc(16px + env(safe-area-inset-left));
     position: sticky; top: 0; z-index: 10;
-    box-shadow: 0 3px 12px rgba(173, 20, 87, .28);
+    box-shadow: 0 3px 12px var(--shadow-strong);
   }
   .brand { display: flex; align-items: center; gap: 12px; max-width: 640px; margin: 0 auto; }
   .fs-btn {
     margin-left: auto; background: rgba(255,255,255,.22); border: none; color: #fff;
-    font-size: 20px; width: 46px; height: 46px; border-radius: 12px; cursor: pointer;
+    font-size: calc(20px * var(--fs)); width: 46px; height: 46px; border-radius: 12px; cursor: pointer;
     display: inline-flex; align-items: center; justify-content: center;
   }
   .fs-btn:active { transform: scale(.94); }
   .app-icon { width: 52px; height: 52px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,.2); background: #fff; }
-  header h1 { font-size: 24px; font-weight: 800; line-height: 1.15; }
-  header .sub { font-size: 15px; opacity: .95; }
+  header h1 { font-size: calc(24px * var(--fs)); font-weight: 800; line-height: 1.15; }
+  header .sub { font-size: calc(15px * var(--fs)); opacity: .95; }
   main {
     padding: 14px; max-width: 640px; margin: 0 auto;
     padding-bottom: calc(90px + env(safe-area-inset-bottom));
@@ -87,112 +306,195 @@ try {
   .card {
     background: var(--card); border: 1px solid var(--pink-border);
     border-radius: 18px; padding: 16px; margin-bottom: 14px;
-    box-shadow: 0 3px 12px rgba(216, 27, 96, .10);
+    box-shadow: 0 3px 12px var(--shadow);
   }
   .camera-box {
     position: relative; background: #1a1a1a; border-radius: 18px; overflow: hidden;
     width: min(100%, 46vh); margin: 0 auto; aspect-ratio: 3/4; max-height: 62vh;
-    cursor: pointer; touch-action: manipulation; box-shadow: 0 4px 16px rgba(173,20,87,.22);
+    cursor: pointer; touch-action: manipulation; box-shadow: 0 4px 16px var(--shadow-strong);
   }
   .camera-box video { width: 100%; height: 100%; object-fit: cover; display: block; }
   .camera-box:focus-visible { outline: 4px solid var(--accent); outline-offset: 3px; }
   .camera-box.off {
     display: flex; align-items: center; justify-content: center;
     color: var(--muted); flex-direction: column; gap: 10px;
-    font-size: 17px; text-align: center; cursor: default;
+    font-size: calc(17px * var(--fs)); text-align: center; cursor: default;
     background: var(--pink-soft); border: 2px dashed var(--pink-border);
   }
   .tap-hint {
     position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%);
-    background: rgba(255,255,255,.94); color: var(--accent-dark);
-    padding: 8px 14px; border-radius: 999px; font-size: 16px; font-weight: 800;
+    background: rgba(255,255,255,.94); color: #7a0f38;
+    padding: 8px 14px; border-radius: 999px; font-size: calc(16px * var(--fs)); font-weight: 800;
     max-width: calc(100% - 16px); white-space: normal; text-align: center;
     pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,.22);
   }
   .cam-icon { width: 64px; height: 64px; fill: var(--accent); opacity: .8; }
   .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-    border: none; border-radius: 14px; padding: 16px 18px;
-    font-size: 20px; font-weight: 700; cursor: pointer; min-height: 60px;
+    border: none; border-radius: 14px; padding: calc(16px * var(--fs)) calc(18px * var(--fs));
+    font-size: calc(20px * var(--fs)); font-weight: 700; cursor: pointer; min-height: calc(60px * var(--fs));
     line-height: 1.2;
   }
   .btn:active { transform: scale(.98); }
   .btn:disabled { opacity: .5; cursor: not-allowed; }
   .btn-primary { background: var(--accent); color: #fff; width: 100%; box-shadow: 0 3px 10px rgba(216,27,96,.28); }
   .btn-primary:hover { background: var(--accent-dark); }
-  .btn-secondary { background: var(--pink-soft); color: var(--accent-dark); width: 100%; border: 2px solid var(--pink-border); }
+  .btn-secondary { background: var(--tint); color: var(--accent-dark); width: 100%; border: 2px solid var(--tint-border); }
   .btn-row { display: flex; gap: 10px; margin-top: 10px; }
   .btn-row .btn { flex: 1; }
-  .label { font-size: 17px; font-weight: 800; color: var(--accent-dark); margin: 6px 0 8px; }
+  .label { font-size: calc(17px * var(--fs)); font-weight: 800; color: var(--accent-dark); margin: 6px 0 8px; }
   .iddsi { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .iddsi button {
     padding: 16px 10px; border-radius: 14px; border: 2px solid var(--pink-border);
-    background: #fff; font-size: 17px; font-weight: 700; cursor: pointer;
+    background: var(--card); font-size: calc(17px * var(--fs)); font-weight: 700; cursor: pointer;
     line-height: 1.3; color: var(--text);
   }
-  .iddsi button small { display: block; font-weight: 400; font-size: 14px; color: var(--muted); margin-top: 2px; }
-  .iddsi button.active { border-color: var(--accent); background: var(--pink-soft); color: var(--accent-dark); box-shadow: inset 0 0 0 2px rgba(216,27,96,.12); }
-  #result { font-size: 19px; }
+  .iddsi button small { display: block; font-weight: 400; font-size: calc(14px * var(--fs)); color: var(--muted); margin-top: 2px; }
+  .iddsi button.active { border-color: var(--accent); background: var(--tint); color: var(--accent-dark); box-shadow: inset 0 0 0 2px rgba(216,27,96,.12); }
+  #result { font-size: calc(19px * var(--fs)); }
   .verdict {
-    padding: 16px; border-radius: 14px; font-size: 22px; font-weight: 800; margin-bottom: 14px;
+    padding: 16px; border-radius: 14px; font-size: calc(22px * var(--fs)); font-weight: 800; margin-bottom: 14px;
     display: flex; align-items: center; gap: 10px; line-height: 1.3;
   }
   .v-green { background: var(--green-bg); color: var(--green); }
   .v-orange { background: var(--orange-bg); color: var(--orange); }
   .v-red { background: var(--red-bg); color: var(--red); }
-  .item { border: 1px solid var(--pink-border); border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; background: #fffafc; }
-  .item .name { font-weight: 800; font-size: 19px; }
-  .item .zh { color: var(--muted); font-size: 17px; }
-  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 15px; font-weight: 800; margin-left: 6px; vertical-align: middle; }
+  .item { border: 1px solid var(--pink-border); border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; background: var(--item-bg); }
+  .item .name { font-weight: 800; font-size: calc(19px * var(--fs)); }
+  .item .zh { color: var(--muted); font-size: calc(17px * var(--fs)); }
+  .zh { color: var(--muted); }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: calc(15px * var(--fs)); font-weight: 800; margin-left: 6px; vertical-align: middle; }
   .b-green { background: var(--green-bg); color: var(--green); }
   .b-orange { background: var(--orange-bg); color: var(--orange); }
   .b-red { background: var(--red-bg); color: var(--red); }
-  .item .detail { margin-top: 8px; font-size: 17px; color: #4a3040; }
-  .item .detail .zh { color: var(--muted); font-size: 16px; }
+  .item .detail { margin-top: 8px; font-size: calc(17px * var(--fs)); color: var(--text); }
+  .item .detail .zh { color: var(--muted); font-size: calc(16px * var(--fs)); }
   .hint {
-    font-size: 20px; color: var(--text); background: var(--pink-soft);
+    font-size: calc(20px * var(--fs)); color: var(--text); background: var(--hint-bg);
     border-left: 5px solid var(--accent); border-radius: 12px;
     padding: 12px 14px; margin-top: 12px; line-height: 1.5; font-weight: 600;
   }
-  .status { font-size: 17px; color: var(--accent-dark); background: var(--pink-soft); border-radius: 12px; padding: 12px 14px; margin-top: 10px; display: none; }
+  .status { font-size: calc(17px * var(--fs)); color: var(--accent-dark); background: var(--tint); border-radius: 12px; padding: 12px 14px; margin-top: 10px; display: none; }
   .status.show { display: block; }
   .status.err { background: var(--red-bg); color: var(--red); }
-  pre.raw { white-space: pre-wrap; word-break: break-word; font-size: 17px; font-family: inherit; }
-  .disclaimer { font-size: 15px; color: var(--red); margin-top: 12px; font-weight: 700; }
+  pre.raw { white-space: pre-wrap; word-break: break-word; font-size: calc(17px * var(--fs)); font-family: inherit; }
+  .disclaimer { font-size: calc(15px * var(--fs)); color: var(--red); margin-top: 12px; font-weight: 700; }
   .not-food {
-    background: #fff1f1; border: 5px solid #e00000; border-radius: 18px;
+    background: var(--danger-bg); border: 5px solid #e00000; border-radius: 18px;
     padding: 20px 14px; margin-bottom: 14px; text-align: center;
   }
   .big-cross { width: 160px; height: 160px; max-width: 52vw; display: block; margin: 0 auto 8px; fill: #e00000; filter: drop-shadow(0 0 8px rgba(224,0,0,.35)); }
-  .not-food-title { color: #c00000; font-size: 30px; font-weight: 800; line-height: 1.2; }
-  .not-food-title .zh { display: block; font-size: 24px; }
-  .not-food-reason { color: #7a0000; font-size: 18px; margin-top: 12px; }
-  .not-food-reason .zh { display: block; color: #9a0000; font-size: 17px; }
+  .not-food-title { color: var(--danger-title); font-size: calc(30px * var(--fs)); font-weight: 800; line-height: 1.2; }
+  .not-food-title .zh { display: block; font-size: calc(24px * var(--fs)); }
+  .not-food-reason { color: var(--danger-text); font-size: calc(18px * var(--fs)); margin-top: 12px; }
+  .not-food-reason .zh { display: block; color: var(--danger-text); font-size: calc(17px * var(--fs)); }
   .mods { margin: 0 0 12px 24px; }
-  .mods li { font-size: 18px; margin: 10px 0; color: #3d2433; }
-  .mods li .zh { display: block; color: var(--muted); font-size: 17px; }
+  .mods li { font-size: calc(18px * var(--fs)); margin: 10px 0; color: var(--text); }
+  .mods li .zh { display: block; color: var(--muted); font-size: calc(17px * var(--fs)); }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
-  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; border-radius: 999px; font-size: 16px; font-weight: 700; line-height: 1.2; }
-  .chip.cat { background: var(--pink-soft); color: var(--accent-dark); border: 1px solid var(--pink-border); }
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; border-radius: 999px; font-size: calc(16px * var(--fs)); font-weight: 700; line-height: 1.2; }
+  .chip.cat { background: var(--tint); color: var(--accent-dark); border: 1px solid var(--tint-border); }
   .chip.hazard { background: var(--orange-bg); color: var(--orange); }
   .chip.allergen { background: var(--red-bg); color: var(--red); }
-  .chip-label { font-size: 15px; font-weight: 800; color: var(--muted); align-self: center; }
+  .chip-label { font-size: calc(15px * var(--fs)); font-weight: 800; color: var(--muted); align-self: center; }
   .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
-  .item-cat { display: inline-block; margin-top: 4px; font-size: 16px; font-weight: 700; color: var(--accent-dark); }
-  .allergy-warning { background: #fff4e5; border: 3px solid #f0a35e; border-radius: 14px; padding: 12px 14px; margin: 10px 0 14px; color: #8a4b00; }
-  .allergy-warning strong { display: block; font-size: 18px; margin-bottom: 4px; }
+  .item-cat { display: inline-block; margin-top: 4px; font-size: calc(16px * var(--fs)); font-weight: 700; color: var(--accent-dark); }
+  .allergy-warning { background: var(--warn-bg); border: 3px solid var(--warn-border); border-radius: 14px; padding: 12px 14px; margin: 10px 0 14px; color: var(--warn-text); }
+  .allergy-warning strong { display: block; font-size: calc(18px * var(--fs)); margin-bottom: 4px; }
   .allergy-warning .chips { margin: 6px 0; }
-  .allergy-sub { font-size: 15px; font-weight: 600; color: #8a4b00; }
+  .allergy-sub { font-size: calc(15px * var(--fs)); font-weight: 600; color: var(--warn-text); }
   .health-notes { margin: 4px 0 14px; }
-  .health-item { border: 2px solid var(--pink-border); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; background: #fffafc; }
+  .health-item { border: 2px solid var(--pink-border); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; background: var(--item-bg); }
   .health-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 4px; }
-  .health-cond { font-size: 18px; font-weight: 800; color: var(--text); }
-  .health-reason { font-size: 17px; color: #4a3040; }
-  .health-reason .zh { display: block; color: var(--muted); font-size: 16px; }
-  .health-disclaimer { font-size: 15px; color: var(--red); font-weight: 700; margin-top: 6px; line-height: 1.45; }
-  .allergy-note { font-size: 16px; color: var(--red); margin-top: 8px; font-weight: 700; line-height: 1.45; }
+  .health-cond { font-size: calc(18px * var(--fs)); font-weight: 800; color: var(--text); }
+  .health-reason { font-size: calc(17px * var(--fs)); color: var(--text); }
+  .health-reason .zh { display: block; color: var(--muted); font-size: calc(16px * var(--fs)); }
+  .health-disclaimer { font-size: calc(15px * var(--fs)); color: var(--red); font-weight: 700; margin-top: 6px; line-height: 1.45; }
+  .allergy-note { font-size: calc(16px * var(--fs)); color: var(--red); margin-top: 8px; font-weight: 700; line-height: 1.45; }
   .tts-row { display: flex; gap: 10px; margin: 14px 0 4px; }
-  .tts-row .btn { flex: 1; min-height: 58px; font-size: 18px; }
+  .tts-row .btn { flex: 1; min-height: calc(58px * var(--fs)); font-size: calc(18px * var(--fs)); }
+
+  /* ---------- Settings ---------- */
+  .header-actions { margin-left: auto; display: flex; gap: 8px; align-items: flex-start; }
+  .settings-btn {
+    background: rgba(255,255,255,.22); border: none; color: #fff;
+    font-size: 22px; width: 46px; height: 46px; border-radius: 12px; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 2px; padding: 4px 0 6px;
+  }
+  .settings-btn:active { transform: scale(.94); }
+  .settings-btn .gear { font-size: 22px; line-height: 1; }
+  .settings-btn .btn-label { font-size: 11px; font-weight: 700; line-height: 1; opacity: .95; }
+  .settings-panel {
+    position: fixed; inset: 0; z-index: 60; display: none;
+    background: rgba(0,0,0,.5); align-items: flex-end; justify-content: center;
+  }
+  .settings-panel.show { display: flex; }
+  .settings-sheet {
+    background: var(--card); width: 100%; max-width: 640px;
+    border-radius: 20px 20px 0 0; padding: 18px 16px;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom));
+    max-height: 92vh; max-height: 92dvh; overflow-y: auto;
+    border-top: 4px solid var(--accent);
+  }
+  .sheet-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .sheet-head h2 { font-size: calc(22px * var(--fs)); font-weight: 800; }
+  .sheet-close {
+    margin-left: auto; background: var(--tint); color: var(--accent-dark);
+    border: 2px solid var(--tint-border); font-size: calc(18px * var(--fs));
+    width: calc(46px * var(--fs)); height: calc(46px * var(--fs));
+    border-radius: 12px; cursor: pointer; font-weight: 800;
+  }
+  .sheet-sub { font-size: calc(15px * var(--fs)); color: var(--muted); margin-bottom: 12px; }
+  .set-group { margin-bottom: 18px; }
+  .set-label {
+    font-size: calc(17px * var(--fs)); font-weight: 800; color: var(--accent-dark);
+    margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+  }
+  .set-label .tag {
+    font-size: calc(13px * var(--fs)); font-weight: 700; color: var(--muted);
+    background: var(--tint); border: 1px solid var(--tint-border);
+    border-radius: 999px; padding: 2px 8px;
+  }
+  .set-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .set-opts button {
+    flex: 1 1 auto; min-width: 96px; min-height: calc(52px * var(--fs));
+    padding: 10px 12px; border-radius: 12px; border: 2px solid var(--tint-border);
+    background: var(--card); color: var(--text); cursor: pointer;
+    font-size: calc(16px * var(--fs)); font-weight: 700; font-family: inherit;
+    line-height: 1.25;
+  }
+  .set-opts button small { display: block; font-weight: 400; font-size: calc(13px * var(--fs)); color: var(--muted); margin-top: 2px; }
+  .set-opts button[aria-pressed="true"] {
+    border-color: var(--accent); background: var(--tint); color: var(--accent-dark);
+    box-shadow: inset 0 0 0 2px rgba(216,27,96,.12);
+  }
+  .set-opts.conditions button[aria-pressed="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .set-opts.conditions button[aria-pressed="true"] small { color: rgba(255,255,255,.9); }
+  .set-note { font-size: calc(14px * var(--fs)); color: var(--muted); margin-top: 8px; }
+  .set-more {
+    margin-top: 10px; width: 100%; min-height: calc(48px * var(--fs));
+    border-radius: 12px; border: 2px dashed var(--tint-border);
+    background: var(--card); color: var(--accent-dark);
+    font-size: calc(16px * var(--fs)); font-weight: 700; font-family: inherit;
+    cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .set-more:active { transform: scale(.99); }
+  .set-more .chev { transition: transform .18s ease; }
+  .set-more[aria-expanded="true"] .chev { transform: rotate(180deg); }
+  .set-more[aria-expanded="true"] { border-style: solid; background: var(--tint); }
+  .set-more.has-selection { border-color: var(--accent); color: var(--accent-dark); }
+  .set-more.has-selection::before { content: "\2022"; color: var(--accent); font-weight: 900; }
+  .set-extra { margin-top: 8px; }
+  .set-extra.hidden { display: none; }
+  .sheet-foot { display: flex; gap: 10px; margin-top: 4px; }
+  .sheet-foot .btn { flex: 1; font-size: calc(17px * var(--fs)); min-height: calc(56px * var(--fs)); }
+  .profile-saved {
+    display: none; margin-top: 10px; padding: 10px 12px; border-radius: 12px;
+    background: var(--green-bg); color: var(--green); font-weight: 700;
+    font-size: calc(15px * var(--fs));
+  }
+  .profile-saved.show { display: block; }
   .hidden { display: none !important; }
   #previewImg { width: 100%; border-radius: 14px; display: block; margin-bottom: 12px; border: 2px solid var(--pink-border); }
 </style>
@@ -205,7 +507,13 @@ try {
       <h1>Food Texture Checker</h1>
       <div class="sub">食物質地檢查 · 吞嚥友好</div>
     </div>
-    <button class="fs-btn" id="btnFullscreen" type="button" title="Full screen 全屏" aria-label="Full screen 全屏">⛶</button>
+    <div class="header-actions">
+      <button class="fs-btn" id="btnFullscreen" type="button" title="Full screen 全屏" aria-label="Full screen 全屏">⛶</button>
+      <button class="settings-btn" id="btnSettings" type="button" title="Settings 設定" aria-label="Settings 設定">
+        <span class="gear" aria-hidden="true">⚙</span>
+        <span class="btn-label">設定</span>
+      </button>
+    </div>
   </div>
 </header>
 <main>
@@ -249,6 +557,74 @@ try {
   </div>
 </main>
 
+<!-- Settings sheet -->
+<div class="settings-panel" id="settingsPanel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="settings-sheet" id="settingsSheet">
+    <div class="sheet-head">
+      <h2 id="settingsTitle">Settings 設定</h2>
+      <button class="sheet-close" id="btnCloseSettings" type="button" aria-label="Close 關閉">✕</button>
+    </div>
+    <div class="sheet-sub">Saved on this device, applied instantly. 即時生效，並儲存於此裝置。</div>
+
+    <div class="set-group">
+      <div class="set-label">Answer language 回應語言</div>
+      <div class="set-opts" id="optLanguage"></div>
+      <button class="set-more" type="button" data-target="optLanguage" aria-expanded="false" aria-controls="optLanguageExtra">More 更多 <span class="chev">▾</span></button>
+      <div class="set-opts set-extra hidden" id="optLanguageExtra"></div>
+    </div>
+
+    <div class="set-group">
+      <div class="set-label">Long-term conditions 長期病患 <span class="tag" id="condTag"></span></div>
+      <div class="set-opts" id="optConditions"></div>
+      <button class="set-more" type="button" data-target="optConditions" aria-expanded="false" aria-controls="optConditionsExtra">More 更多 <span class="chev">▾</span></button>
+      <div class="set-opts set-extra hidden" id="optConditionsExtra"></div>
+      <div class="set-note">The analysis focuses on these. 分析會特別留意以上病患。</div>
+    </div>
+
+    <div class="set-group">
+      <div class="set-label">Text size 字體大小</div>
+      <div class="set-opts" id="optSize"></div>
+      <button class="set-more" type="button" data-target="optSize" aria-expanded="false" aria-controls="optSizeExtra">More 更多 <span class="chev">▾</span></button>
+      <div class="set-opts set-extra hidden" id="optSizeExtra"></div>
+    </div>
+
+    <div class="set-group">
+      <div class="set-label">Theme 主題</div>
+      <div class="set-opts" id="optTheme"></div>
+      <button class="set-more" type="button" data-target="optTheme" aria-expanded="false" aria-controls="optThemeExtra">More 更多 <span class="chev">▾</span></button>
+      <div class="set-opts set-extra hidden" id="optThemeExtra"></div>
+    </div>
+
+    <div class="set-group">
+      <div class="set-label">Text colour 字體顏色</div>
+      <div class="set-opts" id="optColor"></div>
+      <button class="set-more" type="button" data-target="optColor" aria-expanded="false" aria-controls="optColorExtra">More 更多 <span class="chev">▾</span></button>
+      <div class="set-opts set-extra hidden" id="optColorExtra"></div>
+    </div>
+
+    <div class="set-group">
+      <div class="set-label">Font type 字型</div>
+      <div class="set-opts" id="optFont"></div>
+      <button class="set-more" type="button" data-target="optFont" aria-expanded="false" aria-controls="optFontExtra">More 更多 <span class="chev">▾</span></button>
+      <div class="set-opts set-extra hidden" id="optFontExtra"></div>
+    </div>
+
+    <div class="set-group">
+      <div class="set-label">Speak results 語音朗讀</div>
+      <div class="set-opts" id="optSpeak"></div>
+      <button class="set-more" type="button" data-target="optSpeak" aria-expanded="false" aria-controls="optSpeakExtra">More 更多 <span class="chev">▾</span></button>
+      <div class="set-opts set-extra hidden" id="optSpeakExtra"></div>
+    </div>
+
+    <div class="sheet-foot">
+      <button class="btn btn-secondary" id="btnResetSettings" type="button">Reset 重設</button>
+      <button class="btn btn-primary" id="btnDoneSettings" type="button">Done 完成</button>
+    </div>
+    <div class="profile-saved" id="profileSaved">Saved 已儲存</div>
+  </div>
+</div>
+
+<script src="/lang.js?v=1"></script>
 <script>
 window.FC_TOKEN = <?= json_encode($fcToken['token']) ?>;
 window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
@@ -314,6 +690,325 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
   var video = $('video'), camBox = $('camBox'), camPlaceholder = $('camPlaceholder');
   var btnCam = $('btnCam'), btnCapture = $('btnCapture'), statusEl = $('status');
   var stream = null, busy = false;
+
+  // ---------- User profile (saved in localStorage) ----------
+  var PROFILE_KEY = 'fc_profile_v1';
+  var SIZE_SCALE = { xs: 0.78, s: 0.88, m: 1, l: 1.16, xl: 1.32, xxl: 1.5 };
+  var PROFILE_DEFAULTS = {
+    language: 'both',
+    conditions: [],
+    size: 'm',
+    theme: 'pink',
+    color: 'default',
+    font: 'system',
+    speak: 'on'
+  };
+
+  // Option tables. The first few entries of each group are shown directly;
+  // the rest live behind the "More 更多" button.
+  var THEMES = [
+    { v: 'pink', l: 'Pink', s: '粉紅' },
+    { v: 'rose', l: 'Rose', s: '玫瑰' },
+    { v: 'ocean', l: 'Blue', s: '藍色' },
+    { v: 'forest', l: 'Green', s: '綠色' },
+    { v: 'grape', l: 'Purple', s: '紫色' },
+    { v: 'sunset', l: 'Sunset', s: '橙紅' },
+    { v: 'teal', l: 'Teal', s: '青綠' },
+    { v: 'slate', l: 'Slate', s: '灰藍' },
+    { v: 'sepia', l: 'Sepia', s: '米色' },
+    { v: 'crimson', l: 'Crimson', s: '深紅' },
+    { v: 'navy', l: 'Navy', s: '深藍' },
+    { v: 'dark', l: 'Dark', s: '深色' },
+    { v: 'midnight', l: 'Midnight', s: '午夜藍' },
+    { v: 'contrast', l: 'High contrast', s: '高對比' }
+  ];
+  var COLORS = [
+    { v: 'default', l: 'Default', s: '預設' },
+    { v: 'dark', l: 'Black', s: '黑色' },
+    { v: 'soft', l: 'Grey', s: '灰色' },
+    { v: 'warm', l: 'Brown', s: '啡色' },
+    { v: 'navy', l: 'Navy', s: '深藍' },
+    { v: 'green', l: 'Green', s: '深綠' },
+    { v: 'maroon', l: 'Maroon', s: '酒紅' }
+  ];
+  var SIZES = [
+    { v: 'xs', l: 'Extra small', s: '特小' },
+    { v: 's', l: 'Small', s: '小' },
+    { v: 'm', l: 'Normal', s: '中' },
+    { v: 'l', l: 'Large', s: '大' },
+    { v: 'xl', l: 'Extra large', s: '特大' },
+    { v: 'xxl', l: 'Largest', s: '最大' }
+  ];
+  var FONTS = [
+    { v: 'system', l: 'System', s: '系統預設' },
+    { v: 'rounded', l: 'Rounded', s: '圓體 Nunito' },
+    { v: 'serif', l: 'Serif', s: '襯線' },
+    { v: 'mono', l: 'Mono', s: '等寬' },
+    { v: 'slab', l: 'Slab', s: '粗襯線' },
+    { v: 'humanist', l: 'Humanist', s: '人文' }
+  ];
+  var SPEAKS = [
+    { v: 'on', l: 'On 開', s: 'read aloud' },
+    { v: 'off', l: 'Off 關', s: 'no speech' },
+    { v: 'en', l: 'English only', s: 'only English' },
+    { v: 'zh', l: 'Chinese only', s: 'only 中文' }
+  ];
+  var CONDITIONS = [
+    { v: 'diabetes', l: '糖尿病', s: 'Diabetes' },
+    { v: 'heart_disease', l: '心臟病', s: 'Heart disease' },
+    { v: 'stroke', l: '中風', s: 'Stroke' },
+    { v: 'kidney_disease', l: '腎病', s: 'Kidney disease' },
+    { v: 'liver_disease', l: '肝病', s: 'Liver disease' },
+    { v: 'hypertension', l: '高血壓', s: 'High BP' },
+    { v: 'high_cholesterol', l: '高膽固醇', s: 'Cholesterol' },
+    { v: 'gout', l: '痛風', s: 'Gout' }
+  ];
+
+  var LANGUAGES = FC_LANGUAGES.map(function (l) { return l.v; });
+
+  var profile = loadProfile();
+
+  function loadProfile() {
+    var saved = {};
+    try {
+      saved = JSON.parse(localStorage.getItem(PROFILE_KEY) || '{}') || {};
+    } catch (e) { saved = {}; }
+
+    // Fallback for browsers that block localStorage (private mode, strict
+    // settings): a plain cookie keeps the profile across refreshes. This is a
+    // separate try block because localStorage.getItem may throw.
+    if (!saved || !Object.keys(saved).length) {
+      try {
+        var match = document.cookie.match(/(?:^|;\s*)fc_profile=([^;]*)/);
+        if (match && match[1]) saved = JSON.parse(decodeURIComponent(match[1])) || {};
+      } catch (e) { /* ignore */ }
+    }
+
+    var merged = Object.assign({}, PROFILE_DEFAULTS, saved);
+    if (!LANGUAGES.includes(merged.language)) merged.language = PROFILE_DEFAULTS.language;
+    if (!SIZE_SCALE[merged.size]) merged.size = PROFILE_DEFAULTS.size;
+    if (!optionValues(THEMES).includes(merged.theme)) merged.theme = PROFILE_DEFAULTS.theme;
+    if (!optionValues(COLORS).includes(merged.color)) merged.color = PROFILE_DEFAULTS.color;
+    if (!optionValues(FONTS).includes(merged.font)) merged.font = PROFILE_DEFAULTS.font;
+    if (!['on', 'off', 'en', 'zh'].includes(merged.speak)) merged.speak = PROFILE_DEFAULTS.speak;
+    merged.conditions = Array.isArray(merged.conditions)
+      ? merged.conditions.filter(function (c) { return typeof c === 'string'; })
+      : [];
+    return merged;
+  }
+
+  // The option tables hold objects; this returns their plain values.
+  function optionValues(table) {
+    return table.map(function (o) { return o.v; });
+  }
+
+  function saveProfile() {
+    var raw = JSON.stringify(profile);
+    try {
+      localStorage.setItem(PROFILE_KEY, raw);
+    } catch (e) { /* storage may be unavailable in private mode */ }
+    // Always mirror to a cookie so a refresh keeps the settings even when
+    // localStorage is unavailable. One year, same-site, path scoped.
+    try {
+      document.cookie = 'fc_profile=' + encodeURIComponent(raw)
+        + '; path=/; max-age=31536000; SameSite=Lax';
+    } catch (e) { /* cookies may be blocked */ }
+  }
+
+  function applyProfile() {
+    var root = document.documentElement;
+    root.setAttribute('data-theme', profile.theme);
+    root.setAttribute('data-color', profile.color);
+    root.setAttribute('data-font', profile.font);
+    root.setAttribute('lang', profile.language === 'zh' ? 'zh-Hant' : 'en');
+    root.style.setProperty('--fs', SIZE_SCALE[profile.size] || 1);
+
+    // Reflect the current state on the option buttons.
+    syncOptions('optLanguage', profile.language);
+    syncOptions('optSize', profile.size);
+    syncOptions('optTheme', profile.theme);
+    syncOptions('optColor', profile.color);
+    syncOptions('optFont', profile.font);
+    syncOptions('optSpeak', profile.speak);
+    $('optConditions').querySelectorAll('button').forEach(function (b) {
+      b.setAttribute('aria-pressed', profile.conditions.indexOf(b.getAttribute('data-value')) >= 0 ? 'true' : 'false');
+    });
+    $('optConditionsExtra').querySelectorAll('button').forEach(function (b) {
+      b.setAttribute('aria-pressed', profile.conditions.indexOf(b.getAttribute('data-value')) >= 0 ? 'true' : 'false');
+    });
+
+    // Show the count of selected conditions.
+    var tag = $('condTag');
+    if (tag) {
+      tag.textContent = profile.conditions.length
+        ? profile.conditions.length + ' selected 已選'
+        : 'none 未選';
+    }
+
+    // If the current value lives in a collapsed group, hint that it is set.
+    ['optLanguage', 'optSize', 'optTheme', 'optColor', 'optFont', 'optSpeak'].forEach(function (id) {
+      var extra = $(id + 'Extra');
+      if (!extra) return;
+      var selected = extra.querySelector('button[aria-pressed="true"]');
+      var more = document.querySelector('.set-more[data-target="' + id + '"]');
+      if (more) {
+        more.classList.toggle('has-selection', !!selected);
+        more.title = selected
+          ? 'Currently selected: ' + (selected.getAttribute('data-label') || '')
+          : '';
+      }
+    });
+  }
+
+  function syncOptions(groupId, value) {
+    $(groupId).querySelectorAll('button').forEach(function (b) {
+      b.setAttribute('aria-pressed', b.getAttribute('data-value') === value ? 'true' : 'false');
+    });
+    var extra = $(groupId + 'Extra');
+    if (extra) {
+      extra.querySelectorAll('button').forEach(function (b) {
+        b.setAttribute('aria-pressed', b.getAttribute('data-value') === value ? 'true' : 'false');
+      });
+    }
+  }
+
+  // ---------- Build the option buttons ----------
+  function makeOptionButton(opt) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('data-value', opt.v);
+    b.setAttribute('data-label', opt.l);
+    b.setAttribute('aria-pressed', 'false');
+    b.innerHTML = esc(opt.l) + (opt.s ? '<small>' + esc(opt.s) + '</small>' : '');
+    return b;
+  }
+
+  function buildGroup(mainId, extraId, options, basicCount) {
+    var main = $(mainId);
+    var extra = $(extraId);
+    main.innerHTML = '';
+    extra.innerHTML = '';
+
+    options.forEach(function (opt, i) {
+      var button = makeOptionButton(opt);
+      if (i < basicCount) {
+        main.appendChild(button);
+      } else {
+        extra.appendChild(button);
+      }
+    });
+
+    if (!options.length || options.length <= basicCount) {
+      var more = document.querySelector('.set-more[data-target="' + mainId + '"]');
+      if (more) more.classList.add('hidden');
+    }
+  }
+
+  function buildSettingsUI() {
+    // Languages: the ten most used are shown first, the rest behind "More".
+    // "Both 兩者" is the first basic choice, then the common languages.
+    var languageOptions = FC_LANGUAGES
+      .filter(function (l) { return l.v === 'both'; })
+      .concat(FC_LANGUAGES.filter(function (l) { return l.v !== 'both'; }))
+      .map(function (l) { return { v: l.v, l: l.l, s: l.s }; });
+    buildGroup('optLanguage', 'optLanguageExtra', languageOptions, 10);
+    buildGroup('optConditions', 'optConditionsExtra', CONDITIONS, 4);
+    buildGroup('optSize', 'optSizeExtra', SIZES, 4);
+    buildGroup('optTheme', 'optThemeExtra', THEMES, 5);
+    buildGroup('optColor', 'optColorExtra', COLORS, 4);
+    buildGroup('optFont', 'optFontExtra', FONTS, 4);
+    buildGroup('optSpeak', 'optSpeakExtra', SPEAKS, 2);
+    // Every group keeps a "More" button; hide it only when a group is complete.
+    document.querySelectorAll('.set-more').forEach(function (btn) {
+      btn.classList.remove('hidden');
+    });
+  }
+
+  function setProfileValue(key, value) {
+    profile[key] = value;
+    saveProfile();
+    applyProfile();
+  }
+
+  // ---------- Settings panel ----------
+  var settingsPanel = $('settingsPanel');
+
+  function openSettings() {
+    applyProfile();
+    settingsPanel.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeSettings() {
+    settingsPanel.classList.remove('show');
+    document.body.style.overflow = '';
+  }
+
+  $('btnSettings').addEventListener('click', openSettings);
+  $('btnCloseSettings').addEventListener('click', closeSettings);
+  $('btnDoneSettings').addEventListener('click', function () {
+    closeSettings();
+    var saved = $('profileSaved');
+    saved.classList.add('show');
+    setTimeout(function () { saved.classList.remove('show'); }, 2200);
+  });
+  settingsPanel.addEventListener('click', function (e) {
+    if (e.target === settingsPanel) closeSettings();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && settingsPanel.classList.contains('show')) closeSettings();
+  });
+
+  $('btnResetSettings').addEventListener('click', function () {
+    profile = Object.assign({}, PROFILE_DEFAULTS, { conditions: [] });
+    saveProfile();
+    applyProfile();
+  });
+
+  [
+    ['optLanguage', 'language'],
+    ['optSize', 'size'],
+    ['optTheme', 'theme'],
+    ['optColor', 'color'],
+    ['optFont', 'font'],
+    ['optSpeak', 'speak']
+  ].forEach(function (pair) {
+    [pair[0], pair[0] + 'Extra'].forEach(function (id) {
+      $(id).addEventListener('click', function (e) {
+        var b = e.target.closest('button');
+        if (!b) return;
+        setProfileValue(pair[1], b.getAttribute('data-value'));
+      });
+    });
+  });
+
+  ['optConditions', 'optConditionsExtra'].forEach(function (id) {
+    $(id).addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      var value = b.getAttribute('data-value');
+      var index = profile.conditions.indexOf(value);
+      if (index >= 0) profile.conditions.splice(index, 1);
+      else profile.conditions.push(value);
+      saveProfile();
+      applyProfile();
+    });
+  });
+
+  // The "More 更多" button expands or collapses the extra options.
+  document.querySelectorAll('.set-more').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var extra = $(btn.getAttribute('data-target') + 'Extra');
+      if (!extra) return;
+      var expanded = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+      extra.classList.toggle('hidden', expanded);
+      btn.firstChild.nodeValue = expanded ? 'More 更多 ' : 'Less 收起 ';
+    });
+  });
+
+  buildSettingsUI();
+  applyProfile();
 
   // ---------- IDDSI UI ----------
   $('iddsi').addEventListener('click', function (e) {
@@ -407,7 +1102,13 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     btnCapture.textContent = 'Analyzing… 分析中…';
     showStatus('Analyzing… 正在分析…');
     try {
-      var payload = { image: dataUrl, level: currentLevel, source: 'camera' };
+      var payload = {
+        image: dataUrl,
+        level: currentLevel,
+        source: 'camera',
+        language: profile.language,
+        conditions: profile.conditions
+      };
 
       var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
       var timer = controller ? setTimeout(function () { controller.abort(); }, 150000) : null;
@@ -534,6 +1235,18 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     return { en: pretty || 'Unknown', zh: '' };
   }
   function esc(s) { var d = document.createElement('div'); d.textContent = String(s == null ? '' : s); return d.innerHTML; }
+  // Show one or both languages depending on which fields the model filled in.
+  function bi(en, zh, cls) {
+    var e = en ? esc(en) : '';
+    var z = zh ? esc(zh) : '';
+    if (e && z) {
+      return e + '<br><span class="' + (cls || 'zh') + '">' + z + '</span>';
+    }
+    if (z && !e) {
+      return '<span class="' + (cls || 'zh') + '">' + z + '</span>';
+    }
+    return e;
+  }
   function isNo(v) {
     if (v === false || v === 0 || v === '0') return true;
     var s = String(v).toLowerCase().trim();
@@ -556,6 +1269,7 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
 
   function speakItems(items) {
     if (!ttsSupported || !items || !items.length) return;
+    if (profile.speak === 'off') return;
     clearTimeout(ttsTimer);
     window.speechSynthesis.cancel();
     var lastItem = items[items.length - 1];
@@ -582,11 +1296,13 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     if (notFood) {
       out.push({
         lang: 'en-US',
+        part: 'en',
         text: 'Warning. Do not eat. ' + (j.warning_en || j.overall_en
           || 'This does not appear to be food, or it may not be safe to eat.')
       });
       out.push({
         lang: 'zh-HK',
+        part: 'zh',
         text: '警告。請勿食用。' + (j.warning_zh || j.overall_zh
           || '這似乎不是食物，或可能不安全。')
       });
@@ -596,10 +1312,12 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     var ov = VERDICT[j.overall] || VERDICT.caution;
     out.push({
       lang: 'en-US',
+      part: 'en',
       text: (j.dish ? 'Result for ' + j.dish + '. ' : '') + ov.en + '. ' + (j.overall_en || '')
     });
     out.push({
       lang: 'zh-HK',
+      part: 'zh',
       text: (j.dish_zh ? j.dish_zh + '。' : '') + ov.zh + '。' + (j.overall_zh || '')
     });
 
@@ -611,8 +1329,8 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
       if (it.name) itemEn.push(it.name + ', ' + v.en);
       if (it.name_zh) itemZh.push(it.name_zh + '，' + v.zh);
     });
-    if (itemEn.length) out.push({ lang: 'en-US', text: 'Ingredients. ' + itemEn.join('. ') });
-    if (itemZh.length) out.push({ lang: 'zh-HK', text: '食材。' + itemZh.join('。') });
+    if (itemEn.length) out.push({ lang: 'en-US', part: 'en', text: 'Ingredients. ' + itemEn.join('. ') });
+    if (itemZh.length) out.push({ lang: 'zh-HK', part: 'zh', text: '食材。' + itemZh.join('。') });
 
     var types = Array.isArray(j.food_types) ? j.food_types.slice() : [];
     if (!types.length) {
@@ -625,10 +1343,12 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     if (types.length) {
       out.push({
         lang: 'en-US',
+        part: 'en',
         text: 'Food types. ' + types.map(function (key) { return labelFor(CATEGORY, key).en; }).join(', ')
       });
       out.push({
         lang: 'zh-HK',
+        part: 'zh',
         text: '食物類型。' + types.map(function (key) {
           var c = labelFor(CATEGORY, key);
           return c.zh || c.en;
@@ -647,10 +1367,12 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     if (allergens.length) {
       out.push({
         lang: 'en-US',
+        part: 'en',
         text: 'Possible allergens. ' + allergens.map(function (key) { return labelFor(ALLERGEN, key).en; }).join(', ')
       });
       out.push({
         lang: 'zh-HK',
+        part: 'zh',
         text: '可能致敏物。' + allergens.map(function (key) {
           var a = labelFor(ALLERGEN, key);
           return a.zh || a.en;
@@ -667,10 +1389,12 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     if (hazards.length) {
       out.push({
         lang: 'en-US',
+        part: 'en',
         text: 'Possible hazards. ' + hazards.map(function (key) { return labelFor(HAZARD, key).en; }).join(', ')
       });
       out.push({
         lang: 'zh-HK',
+        part: 'zh',
         text: '可能風險。' + hazards.map(function (key) {
           var h = labelFor(HAZARD, key);
           return h.zh || h.en;
@@ -687,8 +1411,8 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
         healthEn.push(c.en + ', ' + l.en + '. ' + (note.reason_en || ''));
         healthZh.push((c.zh || c.en) + '，' + (l.zh || l.en) + '。' + (note.reason_zh || ''));
       });
-      out.push({ lang: 'en-US', text: 'Long-term health notes. ' + healthEn.join(' ') });
-      out.push({ lang: 'zh-HK', text: '長期病患提示。' + healthZh.join(' ') });
+      out.push({ lang: 'en-US', part: 'en', text: 'Long-term health notes. ' + healthEn.join(' ') });
+      out.push({ lang: 'zh-HK', part: 'zh', text: '長期病患提示。' + healthZh.join(' ') });
     }
 
     var mods = Array.isArray(j.modifications) ? j.modifications : [];
@@ -699,8 +1423,37 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
       if (m.en) en.push(m.en);
       if (m.zh) zh.push(m.zh);
     });
-    if (en.length) out.push({ lang: 'en-US', text: 'Ways to make it safer. ' + en.join('. ') });
-    if (zh.length) out.push({ lang: 'zh-HK', text: '安全調整建議。' + zh.join('。') });
+    if (en.length) out.push({ lang: 'en-US', part: 'en', text: 'Ways to make it safer. ' + en.join('. ') });
+    if (zh.length) out.push({ lang: 'zh-HK', part: 'zh', text: '安全調整建議。' + zh.join('。') });
+
+    return out;
+  }
+
+  // Keep only the parts the user wants, and use the right voice locale.
+  function filterSpeech(items) {
+    var mode = profile.speak;
+    if (mode === 'off') return [];
+
+    var chosen = FC_LANG_FIELD[profile.language] || 'both';
+    var out = items.filter(function (item) {
+      if (mode === 'en') return item.part === 'en';
+      if (mode === 'zh') return item.part === 'zh';
+      // "both" speech: read the language the answer was written in.
+      if (chosen === 'en') return item.part === 'en';
+      if (chosen === 'zh') return item.part === 'zh';
+      return true;
+    });
+
+    var locale = FC_TTS_LOCALE[profile.language] || 'en-US';
+    out.forEach(function (item) {
+      if (chosen === 'both') {
+        item.lang = item.part === 'zh' ? 'zh-HK' : locale;
+      } else if (chosen === 'zh') {
+        item.lang = item.part === 'zh' ? locale : 'zh-HK';
+      } else {
+        item.lang = item.part === 'en' ? locale : 'zh-HK';
+      }
+    });
 
     return out;
   }
@@ -712,12 +1465,14 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     }
 
     stopSpeaking();
-    lastSpeech = buildSpeech(j);
+    lastSpeech = filterSpeech(buildSpeech(j) || []);
     if (lastSpeech && lastSpeech.length) {
       $('ttsRow').classList.remove('hidden');
       clearTimeout(ttsTimer);
       // A short delay lets the result render and scroll into view first.
-      ttsTimer = setTimeout(function () { speakItems(lastSpeech); }, 400);
+      if (profile.speak !== 'off') {
+        ttsTimer = setTimeout(function () { speakItems(lastSpeech); }, 400);
+      }
     } else {
       lastSpeech = null;
       $('ttsRow').classList.add('hidden');
@@ -743,13 +1498,13 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
         + '<svg class="big-cross" viewBox="0 0 100 100" aria-hidden="true">'
         + '<path d="M16 6 L50 40 L84 6 L94 16 L60 50 L94 84 L84 94 L50 60 L16 94 L6 84 L40 50 L6 16 Z"/></svg>'
         + '<div class="not-food-title">Do not eat<span class="zh">請勿食用</span></div>'
-        + '<div class="not-food-reason">' + esc(reasonEn) + '<span class="zh">' + esc(reasonZh) + '</span></div>'
+        + '<div class="not-food-reason">' + bi(reasonEn, reasonZh) + '</div>'
         + '</div>';
     } else if (j && j.items) {
       var ov = VERDICT[j.overall] || VERDICT.caution;
       html += '<div class="verdict v-' + ov.cls + '">' + (ov.cls === 'green' ? '✅' : ov.cls === 'orange' ? '⚠️' : '🚫')
         + ' ' + esc(ov.en) + ' / ' + esc(ov.zh) + '</div>'
-        + '<div style="margin-bottom:12px">' + esc(j.overall_en || '') + '<br><span style="color:var(--muted)">' + esc(j.overall_zh || '') + '</span></div>';
+        + '<div style="margin-bottom:12px">' + bi(j.overall_en, j.overall_zh) + '</div>';
 
       var types = Array.isArray(j.food_types) ? j.food_types.slice() : [];
       if (!types.length) {
@@ -797,8 +1552,7 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
             + '<div class="health-head"><span class="health-cond">' + esc(cond.en)
             + (cond.zh ? ' / ' + esc(cond.zh) : '') + '</span>'
             + '<span class="badge b-' + lvl.cls + '">' + esc(lvl.en) + ' / ' + esc(lvl.zh) + '</span></div>'
-            + '<div class="health-reason">' + esc(note.reason_en || '')
-            + (note.reason_zh ? '<span class="zh">' + esc(note.reason_zh) + '</span>' : '') + '</div>'
+            + '<div class="health-reason">' + bi(note.reason_en, note.reason_zh) + '</div>'
             + '</div>';
         });
         html += '</div><div class="health-disclaimer">General information only, not medical advice. Confirm with your doctor or dietitian. 僅供一般參考，並非醫療建議。請向醫生或營養師確認。</div>';
@@ -816,7 +1570,7 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
           var en = m.en || m.action_en || '';
           var zh = m.zh || m.action_zh || '';
           if (!en && !zh) return;
-          html += '<li>' + (en ? esc(en) : '') + (zh ? '<span class="zh">' + esc(zh) + '</span>' : '') + '</li>';
+          html += '<li>' + bi(en, zh) + '</li>';
         });
         html += '</ul>';
       }
@@ -852,11 +1606,11 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
 
         html += '<div class="item">'
           + '<div class="name">' + esc(it.name || '') + '<span class="badge b-' + v.cls + '">' + esc(v.en) + ' / ' + esc(v.zh) + '</span></div>'
-          + '<div class="zh">' + esc(it.name_zh || '') + '</div>'
+          + (it.name_zh ? '<div class="zh">' + esc(it.name_zh) + '</div>' : '')
           + '<div class="item-cat">' + (cat.icon || '🍽️') + ' ' + esc(cat.en)
           + (cat.zh ? ' / ' + esc(cat.zh) : '') + '</div>'
-          + (it.texture ? '<div class="detail">Texture 質地: ' + esc(it.texture) + '<br><span class="zh">' + esc(it.texture_zh || '') + '</span></div>' : '')
-          + (it.risk ? '<div class="detail">Risk 風險: ' + esc(it.risk) + '<br><span class="zh">' + esc(it.risk_zh || '') + '</span></div>' : '')
+          + (it.texture ? '<div class="detail">Texture 質地: ' + bi(it.texture, it.texture_zh) + '</div>' : '')
+          + (it.risk ? '<div class="detail">Risk 風險: ' + bi(it.risk, it.risk_zh) + '</div>' : '')
           + hazardHtml
           + allergenHtml
           + '</div>';

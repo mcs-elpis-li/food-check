@@ -41,6 +41,8 @@ stay on the server.
 | File | Purpose |
 | --- | --- |
 | `index.php` | The whole frontend. PHP so it can embed a signed token for the API. |
+| `lang.js` | The answer-language table (95 languages) shared with `lib.php`. |
+| `fonts/nunito-latin.woff2`, `fonts/nunito-latin-ext.woff2` | Self-hosted rounded font (Latin only, so Chinese keeps the system face). |
 | `vlm-process.php` | Image preprocessor and VLM proxy; the only public analysis endpoint. |
 | `token.php` | Issues short-lived signed tokens to same-origin browser requests. |
 | `lib.php` | Shared helpers: JSON responses, error class, Memcached/file cache, rate limiting, image/log helpers, token signing and verification. |
@@ -122,8 +124,17 @@ chmod 640 config.secrets.php
   `100dvh` sizing and `overscroll-behavior: none` stop the rubber-band scroll on iOS.
 - **Service worker.** Static assets are cache-first; the page, `token.php`, `vlm-process.php`
   and the log viewer are never cached. Bump `CACHE` in `sw.js` when changing shell assets.
-- **Accessibility.** Pink theme, 20px base text, a 20px high-contrast tip callout, 60px
-  buttons, and browser zoom is enabled. The result card uses `aria-live="polite"`.
+- **Accessibility.** Pink theme by default (14 themes available), 20px base text, a 20px
+  high-contrast tip callout, 60px buttons, and browser zoom is enabled. The result card uses
+  `aria-live="polite"`.
+- **Settings panel.** The ⚙ button in the header opens a panel with answer language,
+  long-term conditions, text size, theme, text colour, font type and speech. Each group
+  shows the common choices first and hides the rest behind a **More 更多** toggle. The
+  profile is stored in `localStorage` (mirrored to a cookie) and applied before the first
+  paint by a small inline script, so the saved theme survives a refresh without flashing.
+- **Answer language.** 95 languages. The backend tells the model which language to write
+  in and which JSON fields to leave empty, and enables the model's reasoning mode for
+  single-language answers because it follows the instruction more reliably that way.
 - **Camera.** The portrait preview is centered. Tap the preview (or press **Check food**) to
   capture. After capture, the stream stops, the camera box hides, and the captured photo
   appears in the result card. **Check food** stays disabled until **Open camera** is tapped
@@ -156,12 +167,20 @@ Body:
   "image": "data:image/jpeg;base64,...",
   "level": "soft",
   "source": "camera",
+  "language": "both",
+  "conditions": ["diabetes", "kidney_disease"],
   "model": "optional-model-override"
 }
 ```
 
 `level` is one of `liquid`, `puree`, `minced`, or `soft` (default `soft`). `source` is an
 optional name recorded in `vlm.log`; multipart requests default to the uploaded filename.
+
+`language` is one of `en`, `zh`, `yue`, `zh_cn`, `es`, `fr`, `de`, `ja`, `ko`, `both` and the
+other codes listed in `fc_languages()` (`lib.php`). It decides the language of the answer and
+which JSON fields the model fills. `conditions` is a list of condition keys
+(`diabetes`, `heart_disease`, `stroke`, `kidney_disease`, `liver_disease`, `hypertension`,
+`high_cholesterol`, `gout`) and narrows the health notes and suggestions to those conditions.
 
 `multipart/form-data` is also accepted with an `image` file plus `level` and `model`
 fields. JPEG, PNG, and WebP are supported; images smaller than 16 px, larger than
