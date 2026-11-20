@@ -102,7 +102,7 @@ function fc_build_messages(string $level, array $prefs = []): array
             . 'If the food is fine for their condition, you may omit that condition. ';
     } else {
         $system .= 'The person has not selected any long-term condition. '
-            . 'Give general health notes for any condition that is clearly suggested by the food, and none otherwise. ';
+            . 'Do not include any health notes at all: return an empty health_notes array. ';
     }
 
     $system .= 'IMPORTANT: reply with ONLY a JSON object, no markdown fences, matching exactly: ';
@@ -1027,6 +1027,18 @@ try {
 
     $parsed = fc_extract_json($content);
     $resultData = $parsed !== null ? fc_normalize_result($parsed) : null;
+
+    // Health notes are shown only for the conditions the user actually chose.
+    if (is_array($resultData)) {
+        if (!$conditions) {
+            $resultData['health_notes'] = [];
+        } else {
+            $resultData['health_notes'] = array_values(array_filter(
+                $resultData['health_notes'],
+                static fn (array $note): bool => in_array($note['condition'], $conditions, true)
+            ));
+        }
+    }
     $usage = is_array($upstream['usage'] ?? null) ? $upstream['usage'] : [];
     $completionTokens = (int) ($usage['completion_tokens'] ?? 0);
     $vlmMs = (int) ($logContext['vlm_ms'] ?? 0);

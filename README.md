@@ -127,6 +127,23 @@ is remembered on the device.
 The first choices of every group are shown directly; the rest sit behind a **More 更多**
 button, which expands and collapses that group only.
 
+### Interface language
+
+Every word on screen — the header, the IDDSI level names, the camera buttons, the tip, the
+result headings, the verdict labels, the settings panel and the word under the ⚙ icon —
+follows the language setting:
+
+| Chosen language | Interface text |
+| --- | --- |
+| **Both 兩者** | English and Traditional Chinese side by side, e.g. `Diet level (IDDSI) / 飲食級別 (IDDSI)` |
+| **English** | English only |
+| **繁體中文 / 廣東話** | Traditional Chinese only, e.g. `飲食級別 (IDDSI)` |
+| **简体中文** | Simplified Chinese labels (`设置`) |
+| **Any other language** | English interface; the **analysis result** and the spoken answer are in that language |
+
+The interface ships with English and Traditional Chinese text. Other answer languages are
+applied to the model output and the speech; the panel states this explicitly.
+
 ### How the settings reach the model
 
 The answer language and the selected conditions are sent with every request and change the
@@ -137,7 +154,9 @@ prompt:
   this reliably, so single-language answers use a slightly larger output budget.)
 - **Conditions** - the model is told which long-term conditions the person has, is told to
   give health notes only for those, and is asked to make the safer-food suggestions
-  relevant to them (salt, sugar, oil, purines, potassium, sodium, fluid).
+  relevant to them (salt, sugar, oil, purines, potassium, sodium, fluid). If no condition is
+  selected, no health notes are returned at all; any note for a condition that was not
+  selected is also discarded on the server, so the panel only ever shows the chosen ones.
 
 ### How the settings are stored
 

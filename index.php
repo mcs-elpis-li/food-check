@@ -21,6 +21,9 @@ try {
     error_log('food-check: could not issue token: ' . $fcError->getMessage());
     $fcToken = ['token' => '', 'expires_at' => 0];
 }
+
+// Build stamp: lets an open tab notice a new deployment and reload itself.
+$fcBuild = 'b' . (string) @filemtime(__FILE__);
 ?>
 <!DOCTYPE html>
 <html lang="zh-Hant">
@@ -61,6 +64,20 @@ try {
   if (COLORS.indexOf(p.color) >= 0) root.setAttribute('data-color', p.color);
   if (FONTS.indexOf(p.font) >= 0) root.setAttribute('data-font', p.font);
   if (SCALE[p.size]) root.style.setProperty('--fs', SCALE[p.size]);
+
+  // If the app was updated since this tab was opened, reload once so the new
+  // code (settings, language, theme) is actually running.
+  var BUILD = <?= json_encode($fcBuild) ?>;
+  try {
+    var prev = localStorage.getItem('fc_build');
+    if (prev && prev !== BUILD && !sessionStorage.getItem('fc_reloaded')) {
+      sessionStorage.setItem('fc_reloaded', '1');
+      localStorage.setItem('fc_build', BUILD);
+      location.reload();
+    } else if (!prev) {
+      localStorage.setItem('fc_build', BUILD);
+    }
+  } catch (e) { /* ignore */ }
 })();
 </script>
 <title>Food Texture Checker 食物質地檢查器</title>
@@ -418,13 +435,14 @@ try {
   .header-actions { margin-left: auto; display: flex; gap: 8px; align-items: flex-start; }
   .settings-btn {
     background: rgba(255,255,255,.22); border: none; color: #fff;
-    font-size: 22px; width: 46px; height: 46px; border-radius: 12px; cursor: pointer;
+    font-size: 22px; width: auto; min-width: 48px; height: auto;
+    border-radius: 12px; cursor: pointer;
     display: inline-flex; align-items: center; justify-content: center;
-    flex-direction: column; gap: 2px; padding: 4px 0 6px;
+    flex-direction: column; gap: 3px; padding: 5px 7px 6px;
   }
   .settings-btn:active { transform: scale(.94); }
   .settings-btn .gear { font-size: 22px; line-height: 1; }
-  .settings-btn .btn-label { font-size: 11px; font-weight: 700; line-height: 1; opacity: .95; }
+  .settings-btn .btn-label { font-size: 11px; font-weight: 700; line-height: 1; opacity: .95; white-space: nowrap; }
   .settings-panel {
     position: fixed; inset: 0; z-index: 60; display: none;
     background: rgba(0,0,0,.5); align-items: flex-end; justify-content: center;
@@ -504,44 +522,63 @@ try {
   <div class="brand">
     <img src="/icon-192.png?v=2" alt="" class="app-icon">
     <div>
-      <h1>Food Texture Checker</h1>
-      <div class="sub">食物質地檢查 · 吞嚥友好</div>
+      <h1 data-i18n="app.title">Food Texture Checker</h1>
+      <div class="sub" data-i18n="app.sub">食物質地檢查 · 吞嚥友好</div>
     </div>
     <div class="header-actions">
-      <button class="fs-btn" id="btnFullscreen" type="button" title="Full screen 全屏" aria-label="Full screen 全屏">⛶</button>
-      <button class="settings-btn" id="btnSettings" type="button" title="Settings 設定" aria-label="Settings 設定">
+      <button class="fs-btn" id="btnFullscreen" type="button" title="Full screen" aria-label="Full screen">⛶</button>
+      <button class="settings-btn" id="btnSettings" type="button" title="Settings" aria-label="Settings">
         <span class="gear" aria-hidden="true">⚙</span>
-        <span class="btn-label">設定</span>
+        <span class="btn-label" id="settingsLabel">Settings</span>
       </button>
     </div>
   </div>
 </header>
+<script>
+// Set the word under the gear from the saved language, before the first paint.
+(function () {
+  var LABEL = { zh: '設定', yue: '設定', zh_cn: '设置' };
+  var p = {};
+  try { p = JSON.parse(localStorage.getItem('fc_profile_v1') || '{}') || {}; } catch (e) { p = {}; }
+  if (!p || !Object.keys(p).length) {
+    try {
+      var m = document.cookie.match(/(?:^|;\s*)fc_profile=([^;]*)/);
+      if (m && m[1]) p = JSON.parse(decodeURIComponent(m[1])) || {};
+    } catch (e) { p = {}; }
+  }
+  var word = LABEL[p.language] || 'Settings';
+  var el = document.getElementById('settingsLabel');
+  if (el) el.textContent = word;
+  var btn = document.getElementById('btnSettings');
+  if (btn) { btn.setAttribute('title', word); btn.setAttribute('aria-label', word); }
+})();
+</script>
 <main>
   <!-- Diet level selector -->
   <div class="card">
-    <div class="label">Diet level 飲食級別 (IDDSI)</div>
+    <div class="label" data-i18n="diet.label">Diet level 飲食級別 (IDDSI)</div>
     <div class="iddsi" id="iddsi">
-      <button data-level="liquid">Liquid 流質<small>Drinks only</small></button>
-      <button data-level="puree">Puréed 糊狀<small>Very smooth</small></button>
-      <button data-level="minced">Minced &amp; Moist 碎濕狀<small>Soft lumps</small></button>
-      <button data-level="soft">Soft 軟食<small>Soft solids</small></button>
+      <button data-level="liquid"><span data-i18n="level.liquid">Liquid 流質</span><small data-i18n="level.liquid.sub">Drinks only</small></button>
+      <button data-level="puree"><span data-i18n="level.puree">Puréed 糊狀</span><small data-i18n="level.puree.sub">Very smooth</small></button>
+      <button data-level="minced"><span data-i18n="level.minced">Minced &amp; Moist 碎濕狀</span><small data-i18n="level.minced.sub">Soft lumps</small></button>
+      <button data-level="soft"><span data-i18n="level.soft">Soft 軟食</span><small data-i18n="level.soft.sub">Soft solids</small></button>
     </div>
   </div>
 
   <!-- Camera -->
-  <div class="camera-box off hidden" id="camBox" role="button" tabindex="0" aria-label="Tap to capture a food photo 點按拍攝食物照片">
+  <div class="camera-box off hidden" id="camBox" role="button" tabindex="0" aria-label="Tap to capture a food photo">
     <video id="video" playsinline autoplay muted class="hidden"></video>
-    <div class="tap-hint">📸 Tap to capture 點按拍攝</div>
+    <div class="tap-hint" data-i18n="camera.tap">📸 Tap to capture 點按拍攝</div>
     <div id="camPlaceholder">
       <svg class="cam-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3 7.5 5H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3.5L15 3H9zm3 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg>
-      <div>Camera is closed<br>相機已關閉</div>
+      <div><span data-i18n="camera.closed">Camera is closed / 相機已關閉</span></div>
     </div>
   </div>
   <div class="btn-row">
-    <button class="btn btn-secondary" id="btnCam">📷 Open camera 開啟相機</button>
-    <button class="btn btn-primary" id="btnCapture" disabled>📸 Check food 檢查食物</button>
+    <button class="btn btn-secondary" id="btnCam" data-i18n="btn.openCam">📷 Open camera 開啟相機</button>
+    <button class="btn btn-primary" id="btnCapture" disabled data-i18n="btn.check">📸 Check food 檢查食物</button>
   </div>
-  <div class="hint">Tip: make sure all dishes are in frame with a plain background. Tap the camera or press Check food to capture. 提示：請將整盤食物放入畫面，背景簡潔更容易識別。點按相機或按「檢查食物」即可拍攝。</div>
+  <div class="hint" data-i18n="tip">Tip: make sure all dishes are in frame with a plain background. Tap the camera or press Check food to capture. 提示：請將整盤食物放入畫面，背景簡潔更容易識別。點按相機或按「檢查食物」即可拍攝。</div>
   <div class="status" id="status"></div>
 
   <!-- Result -->
@@ -549,11 +586,11 @@ try {
     <img id="previewImg" alt="captured food">
     <div id="result"></div>
     <div class="tts-row hidden" id="ttsRow">
-      <button class="btn btn-secondary" id="btnRead" type="button">🔊 Read result 朗讀結果</button>
-      <button class="btn btn-secondary" id="btnStopRead" type="button">⏹ Stop 停止</button>
+      <button class="btn btn-secondary" id="btnRead" type="button" data-i18n="tts.read">🔊 Read result 朗讀結果</button>
+      <button class="btn btn-secondary" id="btnStopRead" type="button" data-i18n="tts.stop">⏹ Stop 停止</button>
     </div>
-    <div class="disclaimer">⚠️ This is a visual aid only. It cannot confirm ingredients or allergens. Always follow your doctor or dietitian/nutritionist. 此結果僅供參考，無法確認食材或致敏物。請遵從醫生或營養師的建議。</div>
-    <div class="allergy-note">If you have a food allergy, confirm ingredients with the kitchen and follow your allergy plan. 如有食物過敏，請向廚房確認食材並遵從過敏處理計劃。</div>
+    <div class="disclaimer" data-i18n="disclaimer">⚠️ This is a visual aid only. It cannot confirm ingredients or allergens. Always follow your doctor or dietitian/nutritionist. 此結果僅供參考，無法確認食材或致敏物。請遵從醫生或營養師的建議。</div>
+    <div class="allergy-note" data-i18n="allergy.note">If you have a food allergy, confirm ingredients with the kitchen and follow your allergy plan. 如有食物過敏，請向廚房確認食材並遵從過敏處理計劃。</div>
   </div>
 </main>
 
@@ -561,66 +598,67 @@ try {
 <div class="settings-panel" id="settingsPanel" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
   <div class="settings-sheet" id="settingsSheet">
     <div class="sheet-head">
-      <h2 id="settingsTitle">Settings 設定</h2>
-      <button class="sheet-close" id="btnCloseSettings" type="button" aria-label="Close 關閉">✕</button>
+      <h2 id="settingsTitle" data-i18n="settings.title">Settings 設定</h2>
+      <button class="sheet-close" id="btnCloseSettings" type="button" aria-label="Close" title="Close">✕</button>
     </div>
-    <div class="sheet-sub">Saved on this device, applied instantly. 即時生效，並儲存於此裝置。</div>
+    <div class="sheet-sub" data-i18n="settings.sub">Saved on this device, applied instantly. 即時生效，並儲存於此裝置。</div>
 
     <div class="set-group">
-      <div class="set-label">Answer language 回應語言</div>
+      <div class="set-label" data-i18n="settings.language">Answer language 回應語言</div>
+      <div class="set-note" data-i18n="settings.language.note">The interface text is available in English and Chinese; other languages apply to the analysis result and the spoken answer.</div>
       <div class="set-opts" id="optLanguage"></div>
       <button class="set-more" type="button" data-target="optLanguage" aria-expanded="false" aria-controls="optLanguageExtra">More 更多 <span class="chev">▾</span></button>
       <div class="set-opts set-extra hidden" id="optLanguageExtra"></div>
     </div>
 
     <div class="set-group">
-      <div class="set-label">Long-term conditions 長期病患 <span class="tag" id="condTag"></span></div>
+      <div class="set-label"><span data-i18n="settings.conditions">Long-term conditions 長期病患</span> <span class="tag" id="condTag"></span></div>
       <div class="set-opts" id="optConditions"></div>
       <button class="set-more" type="button" data-target="optConditions" aria-expanded="false" aria-controls="optConditionsExtra">More 更多 <span class="chev">▾</span></button>
       <div class="set-opts set-extra hidden" id="optConditionsExtra"></div>
-      <div class="set-note">The analysis focuses on these. 分析會特別留意以上病患。</div>
+      <div class="set-note" data-i18n="settings.conditions.note">The analysis focuses on these. 分析會特別留意以上病患。</div>
     </div>
 
     <div class="set-group">
-      <div class="set-label">Text size 字體大小</div>
+      <div class="set-label" data-i18n="settings.size">Text size 字體大小</div>
       <div class="set-opts" id="optSize"></div>
       <button class="set-more" type="button" data-target="optSize" aria-expanded="false" aria-controls="optSizeExtra">More 更多 <span class="chev">▾</span></button>
       <div class="set-opts set-extra hidden" id="optSizeExtra"></div>
     </div>
 
     <div class="set-group">
-      <div class="set-label">Theme 主題</div>
+      <div class="set-label" data-i18n="settings.theme">Theme 主題</div>
       <div class="set-opts" id="optTheme"></div>
       <button class="set-more" type="button" data-target="optTheme" aria-expanded="false" aria-controls="optThemeExtra">More 更多 <span class="chev">▾</span></button>
       <div class="set-opts set-extra hidden" id="optThemeExtra"></div>
     </div>
 
     <div class="set-group">
-      <div class="set-label">Text colour 字體顏色</div>
+      <div class="set-label" data-i18n="settings.color">Text colour 字體顏色</div>
       <div class="set-opts" id="optColor"></div>
       <button class="set-more" type="button" data-target="optColor" aria-expanded="false" aria-controls="optColorExtra">More 更多 <span class="chev">▾</span></button>
       <div class="set-opts set-extra hidden" id="optColorExtra"></div>
     </div>
 
     <div class="set-group">
-      <div class="set-label">Font type 字型</div>
+      <div class="set-label" data-i18n="settings.font">Font type 字型</div>
       <div class="set-opts" id="optFont"></div>
       <button class="set-more" type="button" data-target="optFont" aria-expanded="false" aria-controls="optFontExtra">More 更多 <span class="chev">▾</span></button>
       <div class="set-opts set-extra hidden" id="optFontExtra"></div>
     </div>
 
     <div class="set-group">
-      <div class="set-label">Speak results 語音朗讀</div>
+      <div class="set-label" data-i18n="settings.speak">Speak results 語音朗讀</div>
       <div class="set-opts" id="optSpeak"></div>
       <button class="set-more" type="button" data-target="optSpeak" aria-expanded="false" aria-controls="optSpeakExtra">More 更多 <span class="chev">▾</span></button>
       <div class="set-opts set-extra hidden" id="optSpeakExtra"></div>
     </div>
 
     <div class="sheet-foot">
-      <button class="btn btn-secondary" id="btnResetSettings" type="button">Reset 重設</button>
-      <button class="btn btn-primary" id="btnDoneSettings" type="button">Done 完成</button>
+      <button class="btn btn-secondary" id="btnResetSettings" type="button" data-i18n="settings.reset">Reset 重設</button>
+      <button class="btn btn-primary" id="btnDoneSettings" type="button" data-i18n="settings.done">Done 完成</button>
     </div>
-    <div class="profile-saved" id="profileSaved">Saved 已儲存</div>
+    <div class="profile-saved" id="profileSaved" data-i18n="settings.saved">Saved 已儲存</div>
   </div>
 </div>
 
@@ -764,7 +802,175 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     { v: 'gout', l: '痛風', s: 'Gout' }
   ];
 
-  var LANGUAGES = FC_LANGUAGES.map(function (l) { return l.v; });
+  // A built-in fallback so the app still works if lang.js cannot be loaded.
+  var FALLBACK_LANGUAGES = [
+    { v: 'both', l: 'Both 兩者', s: 'English + 中文', f: 'both', tts: 'en-US' },
+    { v: 'en', l: 'English', s: '英文', f: 'en', tts: 'en-US' },
+    { v: 'zh', l: '繁體中文', s: '繁體中文（香港）', f: 'zh', tts: 'zh-HK' },
+    { v: 'yue', l: '廣東話', s: '粵語（書面繁體）', f: 'zh', tts: 'zh-HK' },
+    { v: 'zh_cn', l: '简体中文', s: '簡體中文', f: 'zh', tts: 'zh-CN' },
+    { v: 'es', l: 'Español', s: '西班牙文', f: 'en', tts: 'es-ES' },
+    { v: 'fr', l: 'Français', s: '法文', f: 'en', tts: 'fr-FR' },
+    { v: 'de', l: 'Deutsch', s: '德文', f: 'en', tts: 'de-DE' },
+    { v: 'ja', l: '日本語', s: '日文', f: 'en', tts: 'ja-JP' },
+    { v: 'ko', l: '한국어', s: '韓文', f: 'en', tts: 'ko-KR' }
+  ];
+  var LANGUAGE_TABLE = (typeof FC_LANGUAGES !== 'undefined' && FC_LANGUAGES && FC_LANGUAGES.length)
+    ? FC_LANGUAGES
+    : FALLBACK_LANGUAGES;
+  if (typeof FC_TTS_LOCALE === 'undefined') {
+    FC_TTS_LOCALE = {};
+    LANGUAGE_TABLE.forEach(function (l) { FC_TTS_LOCALE[l.v] = l.tts; });
+  }
+  if (typeof FC_LANG_FIELD === 'undefined') {
+    FC_LANG_FIELD = {};
+    LANGUAGE_TABLE.forEach(function (l) { FC_LANG_FIELD[l.v] = l.f; });
+  }
+
+  // ---------- UI text (English / Traditional Chinese) ----------
+  var UI_I18N = {
+    'app.title': { en: 'Food Texture Checker', zh: '食物質地檢查器' },
+    'app.sub': { en: 'Food texture check · Swallow friendly', zh: '食物質地檢查 · 吞嚥友好' },
+    'btn.fullscreen': { en: 'Full screen', zh: '全屏' },
+    'btn.settings': { en: 'Settings', zh: '設定' },
+    'diet.label': { en: 'Diet level (IDDSI)', zh: '飲食級別 (IDDSI)' },
+    'level.liquid': { en: 'Liquid', zh: '流質' },
+    'level.liquid.sub': { en: 'Drinks only', zh: '只可飲用' },
+    'level.puree': { en: 'Puréed', zh: '糊狀' },
+    'level.puree.sub': { en: 'Very smooth', zh: '非常幼滑' },
+    'level.minced': { en: 'Minced & Moist', zh: '碎濕狀' },
+    'level.minced.sub': { en: 'Soft lumps', zh: '軟身小塊' },
+    'level.soft': { en: 'Soft', zh: '軟食' },
+    'level.soft.sub': { en: 'Soft solids', zh: '軟質食物' },
+    'camera.tap': { en: '📸 Tap to capture', zh: '📸 點按拍攝' },
+    'camera.closed': { en: 'Camera is closed', zh: '相機已關閉' },
+    'camera.aria': { en: 'Tap to capture a food photo', zh: '點按拍攝食物照片' },
+    'btn.openCam': { en: '📷 Open camera', zh: '📷 開啟相機' },
+    'btn.closeCam': { en: '⏹ Close camera', zh: '⏹ 關閉相機' },
+    'btn.check': { en: '📸 Check food', zh: '📸 檢查食物' },
+    'btn.analyzing': { en: 'Analyzing…', zh: '分析中…' },
+    'tip': {
+      en: 'Tip: make sure all dishes are in frame with a plain background. Tap the camera or press Check food to capture.',
+      zh: '提示：請將整盤食物放入畫面，背景簡潔更容易識別。點按相機或按「檢查食物」即可拍攝。'
+    },
+    'result.foodTypes': { en: 'Food types', zh: '食物類型' },
+    'result.allergens': { en: 'Possible allergens', zh: '可能致敏物' },
+    'result.allergenNote': { en: 'Photo estimate only. Confirm with the kitchen.', zh: '僅供參考，請向廚房確認。' },
+    'result.health': { en: 'Long-term health notes', zh: '長期病患提示' },
+    'result.mods': { en: 'Ways to make it safer', zh: '安全調整建議' },
+    'result.ingredients': { en: 'Ingredients', zh: '食材明細' },
+    'result.texture': { en: 'Texture', zh: '質地' },
+    'result.hazards': { en: 'Hazards', zh: '風險' },
+    'result.allergensShort': { en: 'Allergens', zh: '致敏物' },
+    'result.risk': { en: 'Risk', zh: '風險' },
+    'result.dontEat': { en: 'Do not eat', zh: '請勿食用' },
+    'result.notFood': {
+      en: 'This does not appear to be food, or it may not be safe to eat.',
+      zh: '這似乎不是食物，或可能不安全，請勿食用。'
+    },
+    'disclaimer': {
+      en: '⚠️ This is a visual aid only. It cannot confirm ingredients or allergens. Always follow your doctor or dietitian/nutritionist.',
+      zh: '⚠️ 此結果僅供參考，無法確認食材或致敏物。請遵從醫生或營養師的建議。'
+    },
+    'allergy.note': {
+      en: 'If you have a food allergy, confirm ingredients with the kitchen and follow your allergy plan.',
+      zh: '如有食物過敏，請向廚房確認食材並遵從過敏處理計劃。'
+    },
+    'tts.read': { en: '🔊 Read result', zh: '🔊 朗讀結果' },
+    'tts.stop': { en: '⏹ Stop', zh: '⏹ 停止' },
+    'tts.reading': { en: '🔊 Reading…', zh: '🔊 朗讀中…' },
+    'tts.again': { en: '🔊 Read again', zh: '🔊 再朗讀' },
+    'status.analyzing': { en: 'Analyzing…', zh: '正在分析…' },
+    'status.done': { en: 'Done.', zh: '分析完成。' },
+    'status.failed': { en: 'Analysis failed', zh: '分析失敗' },
+    'status.timeout': { en: 'Request timed out.', zh: '請求逾時。' },
+    'status.camUnsupported': { en: 'Camera not supported in this browser.', zh: '此瀏覽器不支援相機。' },
+    'status.camError': { en: 'Camera error', zh: '相機錯誤' },
+    'status.camNotReady': { en: 'Camera not ready.', zh: '相機未就緒。' },
+    'status.needKey': { en: 'Please enter the backend API key in Settings.', zh: '請在設定中填寫後端密鑰。' },
+    'status.tokenFailed': { en: 'Could not get a session token. Please reload the page.', zh: '無法取得工作階段權杖，請重新載入頁面。' },
+    'status.iphoneFullscreen': {
+      en: 'On iPhone, tap Share then "Add to Home Screen" for full screen.',
+      zh: '在 iPhone 上請按「分享」→「加入主畫面」以全屏顯示。'
+    },
+    'settings.title': { en: 'Settings', zh: '設定' },
+    'settings.sub': { en: 'Saved on this device, applied instantly.', zh: '即時生效，並儲存於此裝置。' },
+    'settings.close': { en: 'Close', zh: '關閉' },
+    'settings.language': { en: 'Answer language', zh: '回應語言' },
+    'settings.language.note': {
+      en: 'The interface text is available in English and Chinese. Other languages apply to the analysis result and the spoken answer.',
+      zh: '介面文字提供英文及中文。其他語言會用於分析結果及語音朗讀。'
+    },
+    'settings.conditions': { en: 'Long-term conditions', zh: '長期病患' },
+    'settings.conditions.note': { en: 'The analysis focuses on these.', zh: '分析會特別留意以上病患。' },
+    'settings.conditions.none': { en: 'none selected', zh: '未選' },
+    'settings.conditions.count': { en: 'selected', zh: '已選' },
+    'settings.size': { en: 'Text size', zh: '字體大小' },
+    'settings.theme': { en: 'Theme', zh: '主題' },
+    'settings.color': { en: 'Text colour', zh: '字體顏色' },
+    'settings.font': { en: 'Font type', zh: '字型' },
+    'settings.speak': { en: 'Speak results', zh: '語音朗讀' },
+    'settings.more': { en: 'More', zh: '更多' },
+    'settings.less': { en: 'Less', zh: '收起' },
+    'settings.reset': { en: 'Reset', zh: '重設' },
+    'settings.done': { en: 'Done', zh: '完成' },
+    'settings.saved': { en: 'Saved', zh: '已儲存' },
+    'speak.ingredients': { en: 'Ingredients.', zh: '食材。' },
+    'speak.foodTypes': { en: 'Food types.', zh: '食物類型。' },
+    'speak.allergens': { en: 'Possible allergens.', zh: '可能致敏物。' },
+    'speak.hazards': { en: 'Possible hazards.', zh: '可能風險。' },
+    'speak.health': { en: 'Long-term health notes.', zh: '長期病患提示。' },
+    'speak.mods': { en: 'Ways to make it safer.', zh: '安全調整建議。' },
+    'speak.dontEat': { en: 'Warning. Do not eat.', zh: '警告。請勿食用。' },
+    'speak.resultFor': { en: 'Result for', zh: '結果：' }
+  };
+
+  // 'both' shows the two languages side by side, otherwise one.
+  function uiMode() {
+    var l = profile.language;
+    if (l === 'zh' || l === 'yue') return 'zh';
+    if (l === 'both') return 'both';
+    return 'en';
+  }
+
+  function t(key) {
+    var entry = UI_I18N[key];
+    if (!entry) return key;
+    if (uiMode() === 'both') return entry.en + ' / ' + entry.zh;
+    return uiMode() === 'zh' ? entry.zh : entry.en;
+  }
+
+  // A label from one of the option tables, rendered in the UI language.
+  function mapLabel(map, key) {
+    var e = map[key] || labelFor(map, key);
+    if (uiMode() === 'both') return esc(e.en) + (e.zh ? ' / ' + esc(e.zh) : '');
+    if (uiMode() === 'zh') return esc(e.zh || e.en);
+    return esc(e.en);
+  }
+
+  var LANGUAGES = LANGUAGE_TABLE.map(function (l) { return l.v; });
+
+  // The word under the gear follows the chosen language.
+  var SETTINGS_LABEL = {
+    zh: '設定',
+    yue: '設定',
+    zh_cn: '设置'
+  };
+
+  function settingsLabel(language) {
+    return SETTINGS_LABEL[language] || 'Settings';
+  }
+
+  function updateHeaderLabels() {
+    var label = settingsLabel(profile.language);
+    var el = $('settingsLabel');
+    if (el) el.textContent = label;
+    var btn = $('btnSettings');
+    if (btn) {
+      btn.setAttribute('title', label);
+      btn.setAttribute('aria-label', label);
+    }
+  }
 
   var profile = loadProfile();
 
@@ -785,6 +991,15 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     }
 
     var merged = Object.assign({}, PROFILE_DEFAULTS, saved);
+    // Older profiles stored a separate accent colour; fold it into the theme.
+    if (merged.accent && merged.accent !== 'pink') {
+      var accentToTheme = {
+        blue: 'ocean', green: 'forest', purple: 'grape', orange: 'sunset',
+        teal: 'teal', red: 'crimson', navy: 'navy', brown: 'sepia'
+      };
+      if (accentToTheme[merged.accent]) merged.theme = accentToTheme[merged.accent];
+    }
+    delete merged.accent;
     if (!LANGUAGES.includes(merged.language)) merged.language = PROFILE_DEFAULTS.language;
     if (!SIZE_SCALE[merged.size]) merged.size = PROFILE_DEFAULTS.size;
     if (!optionValues(THEMES).includes(merged.theme)) merged.theme = PROFILE_DEFAULTS.theme;
@@ -801,6 +1016,7 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
   function optionValues(table) {
     return table.map(function (o) { return o.v; });
   }
+
 
   function saveProfile() {
     var raw = JSON.stringify(profile);
@@ -823,6 +1039,10 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     root.setAttribute('lang', profile.language === 'zh' ? 'zh-Hant' : 'en');
     root.style.setProperty('--fs', SIZE_SCALE[profile.size] || 1);
 
+    applyUiLanguage();
+    syncAllOptions();
+    updateHeaderLabels();
+
     // Reflect the current state on the option buttons.
     syncOptions('optLanguage', profile.language);
     syncOptions('optSize', profile.size);
@@ -841,8 +1061,8 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     var tag = $('condTag');
     if (tag) {
       tag.textContent = profile.conditions.length
-        ? profile.conditions.length + ' selected 已選'
-        : 'none 未選';
+        ? profile.conditions.length + ' ' + t('settings.conditions.count')
+        : t('settings.conditions.none');
     }
 
     // If the current value lives in a collapsed group, hint that it is set.
@@ -873,13 +1093,23 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
   }
 
   // ---------- Build the option buttons ----------
+  function optionLabel(opt) {
+    if (uiMode() === 'both') {
+      return esc(opt.l) + (opt.s ? '<small>' + esc(opt.s) + '</small>' : '');
+    }
+    if (uiMode() === 'zh') {
+      return esc(opt.s || opt.l);
+    }
+    return esc(opt.l);
+  }
+
   function makeOptionButton(opt) {
     var b = document.createElement('button');
     b.type = 'button';
     b.setAttribute('data-value', opt.v);
     b.setAttribute('data-label', opt.l);
     b.setAttribute('aria-pressed', 'false');
-    b.innerHTML = esc(opt.l) + (opt.s ? '<small>' + esc(opt.s) + '</small>' : '');
+    b.innerHTML = optionLabel(opt);
     return b;
   }
 
@@ -907,9 +1137,9 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
   function buildSettingsUI() {
     // Languages: the ten most used are shown first, the rest behind "More".
     // "Both 兩者" is the first basic choice, then the common languages.
-    var languageOptions = FC_LANGUAGES
+    var languageOptions = LANGUAGE_TABLE
       .filter(function (l) { return l.v === 'both'; })
-      .concat(FC_LANGUAGES.filter(function (l) { return l.v !== 'both'; }))
+      .concat(LANGUAGE_TABLE.filter(function (l) { return l.v !== 'both'; }))
       .map(function (l) { return { v: l.v, l: l.l, s: l.s }; });
     buildGroup('optLanguage', 'optLanguageExtra', languageOptions, 10);
     buildGroup('optConditions', 'optConditionsExtra', CONDITIONS, 4);
@@ -921,6 +1151,30 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     // Every group keeps a "More" button; hide it only when a group is complete.
     document.querySelectorAll('.set-more').forEach(function (btn) {
       btn.classList.remove('hidden');
+    });
+  }
+
+  // Swap every tagged word for the chosen language and rebuild the option buttons.
+  function applyUiLanguage() {
+    var nodes = document.querySelectorAll('[data-i18n]');
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].textContent = t(nodes[i].getAttribute('data-i18n'));
+    }
+    buildSettingsUI();
+  }
+
+  function syncAllOptions() {
+    syncOptions('optLanguage', profile.language);
+    syncOptions('optSize', profile.size);
+    syncOptions('optTheme', profile.theme);
+    syncOptions('optColor', profile.color);
+    syncOptions('optFont', profile.font);
+    syncOptions('optSpeak', profile.speak);
+    ['optConditions', 'optConditionsExtra'].forEach(function (id) {
+      $(id).querySelectorAll('button').forEach(function (b) {
+        b.setAttribute('aria-pressed',
+          profile.conditions.indexOf(b.getAttribute('data-value')) >= 0 ? 'true' : 'false');
+      });
     });
   }
 
@@ -1003,7 +1257,7 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
       var expanded = btn.getAttribute('aria-expanded') === 'true';
       btn.setAttribute('aria-expanded', expanded ? 'false' : 'true');
       extra.classList.toggle('hidden', expanded);
-      btn.firstChild.nodeValue = expanded ? 'More 更多 ' : 'Less 收起 ';
+      btn.firstChild.nodeValue = t(expanded ? 'settings.more' : 'settings.less') + ' ';
     });
   });
 
@@ -1031,7 +1285,7 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
   // ---------- Camera ----------
   async function startCamera() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      showStatus('Camera not supported in this browser. 此瀏覽器不支援相機。', true); return;
+      showStatus(t('status.camUnsupported'), true); return;
     }
     try {
       stream = await navigator.mediaDevices.getUserMedia({
@@ -1043,12 +1297,12 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
       camBox.classList.remove('hidden');
       video.classList.remove('hidden');
       camBox.classList.remove('off'); camPlaceholder.style.display = 'none';
-      btnCam.textContent = '⏹ Close camera 關閉相機';
+      btnCam.textContent = t('btn.closeCam');
       btnCapture.disabled = false;
       stopSpeaking();
     } catch (err) {
       stopCamera();
-      showStatus('Camera error: ' + err.message + ' 相機錯誤。', true);
+      showStatus(t('status.camError') + ': ' + err.message, true);
     }
   }
   function stopCamera() {
@@ -1058,7 +1312,7 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     camBox.classList.add('off');
     camBox.classList.add('hidden');
     camPlaceholder.style.display = '';
-    btnCam.textContent = '📷 Open camera 開啟相機';
+    btnCam.textContent = t('btn.openCam');
     btnCapture.disabled = true;
     stopSpeaking();
   }
@@ -1067,7 +1321,7 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
   // ---------- Capture (the PHP backend does the final <=1000px resize) ----------
   function captureAndResize() {
     var vw = video.videoWidth, vh = video.videoHeight;
-    if (!vw || !vh) { showStatus('Camera not ready. 相機未就緒。', true); return null; }
+    if (!vw || !vh) { showStatus(t('status.camNotReady'), true); return null; }
     var MAX = 1920; // upload cap; backend shrinks to 1000px for the VLM
     var scale = Math.min(1, MAX / Math.max(vw, vh)); // never upscale
     var w = Math.round(vw * scale), h = Math.round(vh * scale);
@@ -1099,8 +1353,8 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
   // ---------- Backend call ----------
   async function analyze(dataUrl) {
     busy = true; btnCapture.disabled = true;
-    btnCapture.textContent = 'Analyzing… 分析中…';
-    showStatus('Analyzing… 正在分析…');
+    btnCapture.textContent = t('btn.analyzing');
+    showStatus(t('status.analyzing'));
     try {
       var payload = {
         image: dataUrl,
@@ -1153,8 +1407,8 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
       var j = data.result || (data.raw ? extractJson(data.raw) : null);
       renderResult(j, data.raw || '', dataUrl);
     } catch (err) {
-      var message = err && err.name === 'AbortError' ? 'Request timed out. 請求逾時。' : err.message;
-      showStatus('Analysis failed 分析失敗: ' + message, true);
+      var message = err && err.name === 'AbortError' ? t('status.timeout') : err.message;
+      showStatus(t('status.failed') + ': ' + message, true);
     } finally {
       busy = false; btnCapture.disabled = !stream;
       btnCapture.textContent = '📸 Check food 檢查食物';
@@ -1264,7 +1518,7 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     if (!ttsSupported) return;
     clearTimeout(ttsTimer);
     window.speechSynthesis.cancel();
-    $('btnRead').textContent = '🔊 Read result 朗讀結果';
+    $('btnRead').textContent = t('tts.read');
   }
 
   function speakItems(items) {
@@ -1281,9 +1535,9 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
       u.rate = (item.lang || '').indexOf('zh') === 0 ? 0.85 : 0.9;
       u.pitch = 1;
       u.volume = 1;
-      u.onstart = function () { $('btnRead').textContent = '🔊 Reading… 朗讀中…'; };
-      u.onend = function () { if (isLast) $('btnRead').textContent = '🔊 Read again 再朗讀'; };
-      u.onerror = function () { if (isLast) $('btnRead').textContent = '🔊 Read result 朗讀結果'; };
+      u.onstart = function () { $('btnRead').textContent = t('tts.reading'); };
+      u.onend = function () { if (isLast) $('btnRead').textContent = t('tts.again'); };
+      u.onerror = function () { if (isLast) $('btnRead').textContent = t('tts.read'); };
       window.speechSynthesis.speak(u);
     });
   }
@@ -1297,13 +1551,13 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
       out.push({
         lang: 'en-US',
         part: 'en',
-        text: 'Warning. Do not eat. ' + (j.warning_en || j.overall_en
+        text: t('speak.dontEat') + ' ' + (j.warning_en || j.overall_en
           || 'This does not appear to be food, or it may not be safe to eat.')
       });
       out.push({
         lang: 'zh-HK',
         part: 'zh',
-        text: '警告。請勿食用。' + (j.warning_zh || j.overall_zh
+        text: t('speak.dontEat') + ' ' + (j.warning_zh || j.overall_zh
           || '這似乎不是食物，或可能不安全。')
       });
       return out;
@@ -1313,12 +1567,12 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     out.push({
       lang: 'en-US',
       part: 'en',
-      text: (j.dish ? 'Result for ' + j.dish + '. ' : '') + ov.en + '. ' + (j.overall_en || '')
+      text: (j.dish ? t('speak.resultFor') + ' ' + j.dish + '. ' : '') + mapLabel(VERDICT, j.overall) + '. ' + (j.overall_en || '')
     });
     out.push({
       lang: 'zh-HK',
       part: 'zh',
-      text: (j.dish_zh ? j.dish_zh + '。' : '') + ov.zh + '。' + (j.overall_zh || '')
+      text: (j.dish_zh ? j.dish_zh + '。' : '') + mapLabel(VERDICT, j.overall) + '。' + (j.overall_zh || '')
     });
 
     var items = Array.isArray(j.items) ? j.items : [];
@@ -1329,8 +1583,8 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
       if (it.name) itemEn.push(it.name + ', ' + v.en);
       if (it.name_zh) itemZh.push(it.name_zh + '，' + v.zh);
     });
-    if (itemEn.length) out.push({ lang: 'en-US', part: 'en', text: 'Ingredients. ' + itemEn.join('. ') });
-    if (itemZh.length) out.push({ lang: 'zh-HK', part: 'zh', text: '食材。' + itemZh.join('。') });
+    if (itemEn.length) out.push({ lang: 'en-US', part: 'en', text: t('speak.ingredients') + ' ' + itemEn.join('. ') });
+    if (itemZh.length) out.push({ lang: 'zh-HK', part: 'zh', text: t('speak.ingredients') + ' ' + itemZh.join('。') });
 
     var types = Array.isArray(j.food_types) ? j.food_types.slice() : [];
     if (!types.length) {
@@ -1344,12 +1598,12 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
       out.push({
         lang: 'en-US',
         part: 'en',
-        text: 'Food types. ' + types.map(function (key) { return labelFor(CATEGORY, key).en; }).join(', ')
+        text: t('speak.foodTypes') + ' ' + types.map(function (key) { return labelFor(CATEGORY, key).en; }).join(', ')
       });
       out.push({
         lang: 'zh-HK',
         part: 'zh',
-        text: '食物類型。' + types.map(function (key) {
+        text: t('speak.foodTypes') + ' ' + types.map(function (key) {
           var c = labelFor(CATEGORY, key);
           return c.zh || c.en;
         }).join('。')
@@ -1368,12 +1622,12 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
       out.push({
         lang: 'en-US',
         part: 'en',
-        text: 'Possible allergens. ' + allergens.map(function (key) { return labelFor(ALLERGEN, key).en; }).join(', ')
+        text: t('speak.allergens') + ' ' + allergens.map(function (key) { return labelFor(ALLERGEN, key).en; }).join(', ')
       });
       out.push({
         lang: 'zh-HK',
         part: 'zh',
-        text: '可能致敏物。' + allergens.map(function (key) {
+        text: t('speak.allergens') + ' ' + allergens.map(function (key) {
           var a = labelFor(ALLERGEN, key);
           return a.zh || a.en;
         }).join('。')
@@ -1390,12 +1644,12 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
       out.push({
         lang: 'en-US',
         part: 'en',
-        text: 'Possible hazards. ' + hazards.map(function (key) { return labelFor(HAZARD, key).en; }).join(', ')
+        text: t('speak.hazards') + ' ' + hazards.map(function (key) { return labelFor(HAZARD, key).en; }).join(', ')
       });
       out.push({
         lang: 'zh-HK',
         part: 'zh',
-        text: '可能風險。' + hazards.map(function (key) {
+        text: t('speak.hazards') + ' ' + hazards.map(function (key) {
           var h = labelFor(HAZARD, key);
           return h.zh || h.en;
         }).join('。')
@@ -1411,8 +1665,8 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
         healthEn.push(c.en + ', ' + l.en + '. ' + (note.reason_en || ''));
         healthZh.push((c.zh || c.en) + '，' + (l.zh || l.en) + '。' + (note.reason_zh || ''));
       });
-      out.push({ lang: 'en-US', part: 'en', text: 'Long-term health notes. ' + healthEn.join(' ') });
-      out.push({ lang: 'zh-HK', part: 'zh', text: '長期病患提示。' + healthZh.join(' ') });
+      out.push({ lang: 'en-US', part: 'en', text: t('speak.health') + ' ' + healthEn.join(' ') });
+      out.push({ lang: 'zh-HK', part: 'zh', text: t('speak.health') + ' ' + healthZh.join(' ') });
     }
 
     var mods = Array.isArray(j.modifications) ? j.modifications : [];
@@ -1423,8 +1677,8 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
       if (m.en) en.push(m.en);
       if (m.zh) zh.push(m.zh);
     });
-    if (en.length) out.push({ lang: 'en-US', part: 'en', text: 'Ways to make it safer. ' + en.join('. ') });
-    if (zh.length) out.push({ lang: 'zh-HK', part: 'zh', text: '安全調整建議。' + zh.join('。') });
+    if (en.length) out.push({ lang: 'en-US', part: 'en', text: t('speak.mods') + ' ' + en.join('. ') });
+    if (zh.length) out.push({ lang: 'zh-HK', part: 'zh', text: t('speak.mods') + ' ' + zh.join('。') });
 
     return out;
   }
@@ -1492,18 +1746,22 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
 
     var notFood = j && (isNo(j.is_food) || isNo(j.is_edible));
     if (notFood) {
-      var reasonEn = j.warning_en || j.overall_en || 'This does not appear to be food, or it may not be safe to eat.';
-      var reasonZh = j.warning_zh || j.overall_zh || '這似乎不是食物，或可能不安全，請勿食用。';
+      var reasonEn = j.warning_en || j.overall_en || '';
+      var reasonZh = j.warning_zh || j.overall_zh || '';
+      var reason = uiMode() === 'both'
+        ? (reasonEn ? esc(reasonEn) : '') + (reasonEn && reasonZh ? ' / ' : '') + (reasonZh ? esc(reasonZh) : '')
+        : (uiMode() === 'zh' ? (reasonZh ? esc(reasonZh) : esc(reasonEn)) : esc(reasonEn || reasonZh));
+      if (!reason) reason = esc(t('result.notFood'));
       html += '<div class="not-food" role="alert">'
         + '<svg class="big-cross" viewBox="0 0 100 100" aria-hidden="true">'
         + '<path d="M16 6 L50 40 L84 6 L94 16 L60 50 L94 84 L84 94 L50 60 L16 94 L6 84 L40 50 L6 16 Z"/></svg>'
-        + '<div class="not-food-title">Do not eat<span class="zh">請勿食用</span></div>'
-        + '<div class="not-food-reason">' + bi(reasonEn, reasonZh) + '</div>'
+        + '<div class="not-food-title">' + esc(t('result.dontEat')) + '</div>'
+        + '<div class="not-food-reason">' + reason + '</div>'
         + '</div>';
     } else if (j && j.items) {
       var ov = VERDICT[j.overall] || VERDICT.caution;
       html += '<div class="verdict v-' + ov.cls + '">' + (ov.cls === 'green' ? '✅' : ov.cls === 'orange' ? '⚠️' : '🚫')
-        + ' ' + esc(ov.en) + ' / ' + esc(ov.zh) + '</div>'
+        + ' ' + mapLabel(VERDICT, j.overall) + '</div>'
         + '<div style="margin-bottom:12px">' + bi(j.overall_en, j.overall_zh) + '</div>';
 
       var types = Array.isArray(j.food_types) ? j.food_types.slice() : [];
@@ -1515,11 +1773,10 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
         });
       }
       if (types.length) {
-        html += '<div class="label">Food types 食物類型</div><div class="chips">';
+        html += '<div class="label">' + esc(t('result.foodTypes')) + '</div><div class="chips">';
         types.forEach(function (key) {
           var c = CATEGORY[key] || labelFor(CATEGORY, key);
-          html += '<span class="chip cat">' + (c.icon || '🍽️') + ' ' + esc(c.en)
-            + (c.zh ? ' / ' + esc(c.zh) : '') + '</span>';
+          html += '<span class="chip cat">' + (c.icon || '🍽️') + ' ' + mapLabel(CATEGORY, key) + '</span>';
         });
         html += '</div>';
       }
@@ -1533,25 +1790,22 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
         });
       }
       if (allergens.length) {
-        html += '<div class="allergy-warning" role="alert"><strong>🚨 Possible allergens 可能致敏物</strong><div class="chips">';
+        html += '<div class="allergy-warning" role="alert"><strong>🚨 ' + esc(t('result.allergens')) + '</strong><div class="chips">';
         allergens.forEach(function (key) {
-          var a = labelFor(ALLERGEN, key);
-          html += '<span class="chip allergen">' + esc(a.en)
-            + (a.zh ? ' / ' + esc(a.zh) : '') + '</span>';
+          html += '<span class="chip allergen">' + mapLabel(ALLERGEN, key) + '</span>';
         });
-        html += '</div><div class="allergy-sub">Photo estimate only. Confirm with the kitchen. 僅供參考，請向廚房確認。</div></div>';
+        html += '</div><div class="allergy-sub">' + esc(t('result.allergenNote')) + '</div></div>';
       }
 
       var healthNotes = Array.isArray(j.health_notes) ? j.health_notes : [];
       if (healthNotes.length) {
-        html += '<div class="label">Long-term health notes 長期病患提示</div><div class="health-notes">';
+        html += '<div class="label">' + esc(t('result.health')) + '</div><div class="health-notes">';
         healthNotes.forEach(function (note) {
-          var cond = CONDITION[note.condition] || labelFor(CONDITION, note.condition);
           var lvl = HEALTH_LEVEL[note.level] || HEALTH_LEVEL.caution;
           html += '<div class="health-item">'
-            + '<div class="health-head"><span class="health-cond">' + esc(cond.en)
-            + (cond.zh ? ' / ' + esc(cond.zh) : '') + '</span>'
-            + '<span class="badge b-' + lvl.cls + '">' + esc(lvl.en) + ' / ' + esc(lvl.zh) + '</span></div>'
+            + '<div class="health-head"><span class="health-cond">'
+            + mapLabel(CONDITION, note.condition) + '</span>'
+            + '<span class="badge b-' + lvl.cls + '">' + mapLabel(HEALTH_LEVEL, note.level) + '</span></div>'
             + '<div class="health-reason">' + bi(note.reason_en, note.reason_zh) + '</div>'
             + '</div>';
         });
@@ -1560,7 +1814,7 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
 
       var mods = Array.isArray(j.modifications) ? j.modifications : [];
       if (mods.length) {
-        html += '<div class="label">Ways to make it safer 安全調整建議</div><ul class="mods">';
+        html += '<div class="label">' + esc(t('result.mods')) + '</div><ul class="mods">';
         mods.forEach(function (m) {
           if (typeof m === 'string') {
             if (m) html += '<li>' + esc(m) + '</li>';
@@ -1575,7 +1829,7 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
         html += '</ul>';
       }
 
-      html += '<div class="label">Ingredients 食材明細</div>';
+      html += '<div class="label">' + esc(t('result.ingredients')) + '</div>';
       (j.items || []).forEach(function (it) {
         var v = VERDICT[it.verdict] || VERDICT.caution;
         var cat = CATEGORY[it.category] || labelFor(CATEGORY, it.category);
@@ -1583,11 +1837,10 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
         var hazardHtml = '';
         var hazards = Array.isArray(it.hazards) ? it.hazards : [];
         if (hazards.length) {
-          hazardHtml = '<div class="chip-row"><span class="chip-label">Hazards 風險</span>';
+          hazardHtml = '<div class="chip-row"><span class="chip-label">'
+            + esc(t('result.hazards')) + '</span>';
           hazards.forEach(function (key) {
-            var h = labelFor(HAZARD, key);
-            hazardHtml += '<span class="chip hazard">' + esc(h.en)
-              + (h.zh ? ' / ' + esc(h.zh) : '') + '</span>';
+            hazardHtml += '<span class="chip hazard">' + mapLabel(HAZARD, key) + '</span>';
           });
           hazardHtml += '</div>';
         }
@@ -1595,34 +1848,34 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
         var allergenHtml = '';
         var itemAllergens = Array.isArray(it.allergens) ? it.allergens : [];
         if (itemAllergens.length) {
-          allergenHtml = '<div class="chip-row"><span class="chip-label">Allergens 致敏物</span>';
+          allergenHtml = '<div class="chip-row"><span class="chip-label">'
+            + esc(t('result.allergensShort')) + '</span>';
           itemAllergens.forEach(function (key) {
-            var a = labelFor(ALLERGEN, key);
-            allergenHtml += '<span class="chip allergen">' + esc(a.en)
-              + (a.zh ? ' / ' + esc(a.zh) : '') + '</span>';
+            allergenHtml += '<span class="chip allergen">' + mapLabel(ALLERGEN, key) + '</span>';
           });
           allergenHtml += '</div>';
         }
 
+        var nameMain = it.name || it.name_zh || '';
+        var nameSub = (it.name && it.name_zh) ? it.name_zh : '';
         html += '<div class="item">'
-          + '<div class="name">' + esc(it.name || '') + '<span class="badge b-' + v.cls + '">' + esc(v.en) + ' / ' + esc(v.zh) + '</span></div>'
-          + (it.name_zh ? '<div class="zh">' + esc(it.name_zh) + '</div>' : '')
-          + '<div class="item-cat">' + (cat.icon || '🍽️') + ' ' + esc(cat.en)
-          + (cat.zh ? ' / ' + esc(cat.zh) : '') + '</div>'
-          + (it.texture ? '<div class="detail">Texture 質地: ' + bi(it.texture, it.texture_zh) + '</div>' : '')
-          + (it.risk ? '<div class="detail">Risk 風險: ' + bi(it.risk, it.risk_zh) + '</div>' : '')
+          + '<div class="name">' + esc(nameMain) + '<span class="badge b-' + v.cls + '">' + mapLabel(VERDICT, it.verdict) + '</span></div>'
+          + (nameSub ? '<div class="zh">' + esc(nameSub) + '</div>' : '')
+          + '<div class="item-cat">' + (cat.icon || '🍽️') + ' ' + mapLabel(CATEGORY, it.category) + '</div>'
+          + (it.texture ? '<div class="detail">' + esc(t('result.texture')) + ': ' + bi(it.texture, it.texture_zh) + '</div>' : '')
+          + (it.risk ? '<div class="detail">' + esc(t('result.risk')) + ': ' + bi(it.risk, it.risk_zh) + '</div>' : '')
           + hazardHtml
           + allergenHtml
           + '</div>';
       });
     } else {
-      html += '<pre class="raw">' + esc(raw || 'No result. 沒有結果。') + '</pre>';
+      html += '<pre class="raw">' + esc(raw || t('result.notFood')) + '</pre>';
     }
 
     $('result').innerHTML = html;
     $('resultCard').classList.remove('hidden');
     $('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    showStatus('Done. 分析完成。');
+    showStatus(t('status.done'));
     setupSpeech(j);
   }
 
@@ -1646,7 +1899,7 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
       return;
     }
     // iOS Safari has no fullscreen API on iPhone: offer the home-screen hint.
-    showStatus('On iPhone, tap Share then "Add to Home Screen" for full screen. 在 iPhone 上請按「分享」→「加入主畫面」以全屏顯示。');
+    showStatus(t('status.iphoneFullscreen'));
   });
 
   document.addEventListener('fullscreenchange', syncFullscreenButton);
@@ -1664,7 +1917,18 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', function () {
-    navigator.serviceWorker.register('/sw.js').catch(function () {});
+    navigator.serviceWorker.register('/sw.js').then(function (reg) {
+      // Ask for a fresh copy of the worker on every load.
+      if (reg.update) reg.update().catch(function () {});
+    }).catch(function () {});
+  });
+
+  // When a new worker takes control, reload once so the new code runs.
+  var swReloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function () {
+    if (swReloading) return;
+    swReloading = true;
+    window.location.reload();
   });
 }
 </script>
