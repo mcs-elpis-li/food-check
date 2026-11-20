@@ -738,6 +738,9 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
   var video = $('video'), camBox = $('camBox'), camPlaceholder = $('camPlaceholder');
   var btnCam = $('btnCam'), btnCapture = $('btnCapture'), statusEl = $('status');
   var stream = null, busy = false;
+  // Keep the last result so changing the language can relabel it in place.
+  var lastResult = null;
+  var lastRenderedLanguage = null;
 
   // ---------- User profile (saved in localStorage) ----------
   var PROFILE_KEY = 'fc_profile_v1';
@@ -1101,6 +1104,14 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
         more.title = selected ? (selected.getAttribute('data-label') || '') : '';
       }
     });
+
+    // Relabel an on-screen result when the language changes. The analysed
+    // text itself stays as the model wrote it; its headings and badges follow
+    // the new language immediately.
+    if (lastRenderedLanguage !== null && lastRenderedLanguage !== profile.language && lastResult) {
+      renderResult(lastResult.j, lastResult.raw, lastResult.dataUrl, { quiet: true });
+    }
+    lastRenderedLanguage = profile.language;
   }
 
   function syncOptions(groupId, value) {
@@ -1450,13 +1461,14 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
       }
 
       var j = data.result || (data.raw ? extractJson(data.raw) : null);
+      lastResult = { j: j, raw: data.raw || '', dataUrl: dataUrl };
       renderResult(j, data.raw || '', dataUrl);
     } catch (err) {
       var message = err && err.name === 'AbortError' ? t('status.timeout') : err.message;
       showStatus(t('status.failed') + ': ' + message, true);
     } finally {
       busy = false; btnCapture.disabled = !stream;
-      btnCapture.textContent = '📸 Check food 檢查食物';
+      btnCapture.textContent = t('btn.check');
     }
   }
 
@@ -1785,7 +1797,8 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     $('btnStopRead').addEventListener('click', stopSpeaking);
   }
 
-  function renderResult(j, raw, dataUrl) {
+  function renderResult(j, raw, dataUrl, opts) {
+    opts = opts || {};
     var html = '';
     $('previewImg').src = dataUrl;
 
@@ -1921,9 +1934,11 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
 
     $('result').innerHTML = html;
     $('resultCard').classList.remove('hidden');
-    $('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    showStatus(t('status.done'));
-    setupSpeech(j);
+    if (!opts.quiet) {
+      $('resultCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      showStatus(t('status.done'));
+      setupSpeech(j);
+    }
   }
 
   // ---------- Full screen ----------
