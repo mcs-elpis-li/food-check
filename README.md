@@ -36,7 +36,7 @@ Live site: **https://food-check.elpis.li/**
 - **Installable web app** - a manifest, icons and a service worker make it installable on
   Android and iOS. The installed app runs full screen without browser chrome, and a
   **full screen** button in the header hides the browser bars on the spot.
-- **Settings panel** (⚙ **設定** in the header) - answer language, long-term conditions,
+- **Settings panel** (⚙ **設定** in the header) - app language, long-term conditions,
   text size, theme, text colour, font type and speech, all changeable at any time.
 - **Saved profile** - every setting is written to the device (localStorage, mirrored to a
   cookie) and restored on the next visit, with no flash of the wrong theme on load.
@@ -116,7 +116,7 @@ is remembered on the device.
 
 | Setting | Options |
 | --- | --- |
-| **Answer language 回應語言** | 95 choices: English, 繁體中文, 廣東話, 简体中文, Español, Français, Deutsch, 日本語, 한국어, Português, Nederlands, Русский, العربية, हिन्दी, ไทย, Tiếng Việt, Bahasa Indonesia, Bahasa Melayu, Tagalog, Polski, Türkçe, Svenska, Dansk, Norsk, Suomi, Čeština, Slovenčina, Magyar, Română, Ελληνικά, עברית, Українська, Български, Hrvatski, Српски, Català, Euskara, Galego, Íslenska, Gaeilge, Cymraeg, Eesti, Latviešu, Lietuvių, Shqip, Македонски, Bosanski, Беларуская, Қазақша, Oʻzbekcha, Монгол, ქართული, Հայերեն, বাংলা, اردو, فارسی, தமிழ், తెలుగు, മലയാളം, मराठी, ગુજરાતી, ਪੰਜਾਬੀ, नेपाली, සිංහල, ខ្មែរ, ລາວ, မြန်မာ, Kiswahili, Afrikaans, አማርኛ, Hausa, Yorùbá, Igbo, isiZulu, isiXhosa, Soomaali, Esperanto, Latina, Malti, Māori, Gagana Sāmoa, Filipino, Cebuano, Basa Jawa, Basa Sunda, ʻŌlelo Hawaiʻi, Gàidhlig, Brezhoneg, Occitan, Corsu, Lëtzebuergesch, Frysk, ייִדיש, and **Both 兩者**.
+| **App language 應用程式語言** | 95 choices: English, 繁體中文, 廣東話, 简体中文, Español, Français, Deutsch, 日本語, 한국어, Português, Nederlands, Русский, العربية, हिन्दी, ไทย, Tiếng Việt, Bahasa Indonesia, Bahasa Melayu, Tagalog, Polski, Türkçe, Svenska, Dansk, Norsk, Suomi, Čeština, Slovenčina, Magyar, Română, Ελληνικά, עברית, Українська, Български, Hrvatski, Српски, Català, Euskara, Galego, Íslenska, Gaeilge, Cymraeg, Eesti, Latviešu, Lietuvių, Shqip, Македонски, Bosanski, Беларуская, Қазақша, Oʻzbekcha, Монгол, ქართული, Հայերեն, বাংলা, اردو, فارسی, தமிழ், తెలుగు, മലയാളം, मराठी, ગુજરાતી, ਪੰਜਾਬੀ, नेपाली, සිංහල, ខ្មែរ, ລາວ, မြန်မာ, Kiswahili, Afrikaans, አማርኛ, Hausa, Yorùbá, Igbo, isiZulu, isiXhosa, Soomaali, Esperanto, Latina, Malti, Māori, Gagana Sāmoa, Filipino, Cebuano, Basa Jawa, Basa Sunda, ʻŌlelo Hawaiʻi, Gàidhlig, Brezhoneg, Occitan, Corsu, Lëtzebuergesch, Frysk, ייִדיש, and **Both 兩者**.
 | **Long-term conditions 長期病患** | Multi-select: 糖尿病 Diabetes, 心臟病 Heart disease, 中風 Stroke, 腎病 Kidney disease, 肝病 Liver disease, 高血壓 High blood pressure, 高膽固醇 High cholesterol, 痛風 Gout. The analysis focuses on the conditions you picked. |
 | **Text size 字體大小** | Extra small → Largest (6 steps, scales the whole interface). |
 | **Theme 主題** | 14 themes, each with its own surface **and** accent colour: Pink, Rose, Blue, Green, Purple, Sunset, Teal, Slate, Sepia, Crimson, Navy, Dark, Midnight, High contrast. |
@@ -127,22 +127,25 @@ is remembered on the device.
 The first choices of every group are shown directly; the rest sit behind a **More 更多**
 button, which expands and collapses that group only.
 
-### Interface language
+### App language
 
-Every word on screen — the header, the IDDSI level names, the camera buttons, the tip, the
-result headings, the verdict labels, the settings panel and the word under the ⚙ icon —
-follows the language setting:
+One setting changes **the whole app**: the header, the ⚙ caption, the IDDSI level names,
+the camera buttons, the tip, the result headings, the verdicts, food types, allergens,
+health notes, ingredient details, status messages, the settings panel and the spoken answer.
 
-| Chosen language | Interface text |
+| Chosen language | Interface, result and speech |
 | --- | --- |
 | **Both 兩者** | English and Traditional Chinese side by side, e.g. `Diet level (IDDSI) / 飲食級別 (IDDSI)` |
 | **English** | English only |
 | **繁體中文 / 廣東話** | Traditional Chinese only, e.g. `飲食級別 (IDDSI)` |
-| **简体中文** | Simplified Chinese labels (`设置`) |
-| **Any other language** | English interface; the **analysis result** and the spoken answer are in that language |
+| **简体中文** | Simplified Chinese (`饮食级别`, `设置`) |
+| **The other 90 languages** | The entire interface, the analysis result and the speech use that language |
+| **العربية / עברית / فارسی / اردو / ייִדיש** | As above, with the layout switched to right-to-left |
 
-The interface ships with English and Traditional Chinese text. Other answer languages are
-applied to the model output and the speech; the panel states this explicitly.
+The English and Traditional Chinese text is written by hand. The other languages are stored
+in `ui-lang.js` and were produced with the local language model; they can be corrected there
+without touching the app logic. Language names in the picker always stay in their own
+language so people can find theirs.
 
 ### How the settings reach the model
 
@@ -151,7 +154,7 @@ Three settings are part of the request and change the prompt on every analysis:
 | Setting | What it changes in the prompt |
 | --- | --- |
 | **Diet level (IDDSI)** | The person's level is written into the system message and the user message (`Soft (IDDSI 6-7: ...) / 軟食（...）`), and the safer-food suggestions are aimed at that level. |
-| **Answer language** | A final `LANGUAGE:` instruction names the requested language and says which fields to fill (`_en` or `_zh`) and which to leave empty. `Both` asks for English and Traditional Chinese in every pair of fields. |
+| **App language** | Changes the whole interface, and a final `LANGUAGE:` instruction names the same language for the answer, saying which fields to fill (`_en` or `_zh`) and which to leave empty. `Both` asks for English and Traditional Chinese in every pair of fields. |
 | **Long-term conditions** | The chosen conditions are listed in the system message and the user message. The model is told to write health notes **only** for those, and to make the safer-food advice relevant to them (salt, sugar, oil, purines, potassium, sodium, fluid). With none selected, the prompt explicitly forbids health notes and names no condition. |
 
 - The prompt is rebuilt for every request; the exact text is stored in the `prompt` field of

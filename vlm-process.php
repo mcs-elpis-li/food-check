@@ -132,7 +132,9 @@ function fc_build_messages(string $level, array $prefs = []): array
         $system .= 'LANGUAGE: the whole answer must be written in ' . $lang['label'] . '. '
             . 'Write the answer in the "_zh" fields and leave every "_en" field as an empty string. '
             . 'Do not write the answer in English. '
-            . 'Write every Chinese string in Traditional Chinese (Hong Kong), never Simplified Chinese. ';
+            . ($language === 'zh_cn'
+                ? 'Write every Chinese string in Simplified Chinese. '
+                : 'Write every Chinese string in Traditional Chinese (Hong Kong), never Simplified Chinese. ');
     } else {
         $system .= 'LANGUAGE: the whole answer must be written in ' . $lang['label'] . '. '
             . 'Write the answer in the "_en" fields and leave every "_zh" field as an empty string. '

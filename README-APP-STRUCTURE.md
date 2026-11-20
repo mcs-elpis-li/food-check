@@ -41,7 +41,8 @@ stay on the server.
 | File | Purpose |
 | --- | --- |
 | `index.php` | The whole frontend. PHP so it can embed a signed token for the API. |
-| `lang.js` | The answer-language table (95 languages) shared with `lib.php`. |
+| `lang.js` | The language table (95 languages) shared with `lib.php`. |
+| `ui-lang.js` | Interface translations for every language except English and Traditional Chinese, which live in `index.php`. |
 | `fonts/nunito-latin.woff2`, `fonts/nunito-latin-ext.woff2` | Self-hosted rounded font (Latin only, so Chinese keeps the system face). |
 | `vlm-process.php` | Image preprocessor and VLM proxy; the only public analysis endpoint. |
 | `token.php` | Issues short-lived signed tokens to same-origin browser requests. |
@@ -127,14 +128,17 @@ chmod 640 config.secrets.php
 - **Accessibility.** Pink theme by default (14 themes available), 20px base text, a 20px
   high-contrast tip callout, 60px buttons, and browser zoom is enabled. The result card uses
   `aria-live="polite"`.
-- **Settings panel.** The ⚙ button in the header opens a panel with answer language,
+- **Settings panel.** The ⚙ button in the header opens a panel with app language,
   long-term conditions, text size, theme, text colour, font type and speech. Each group
   shows the common choices first and hides the rest behind a **More 更多** toggle. The
   profile is stored in `localStorage` (mirrored to a cookie) and applied before the first
   paint by a small inline script, so the saved theme survives a refresh without flashing.
-- **Answer language.** 95 languages. The backend tells the model which language to write
-  in and which JSON fields to leave empty, and enables the model's reasoning mode for
+- **App language.** 95 languages. `ui-lang.js` holds the interface translations (English
+  and Traditional Chinese are maintained by hand; the rest were generated with the local
+  model). The same setting is sent to the backend, which tells the model which language to
+  write in and which JSON fields to leave empty, and enables the model's reasoning mode for
   single-language answers because it follows the instruction more reliably that way.
+  Arabic, Hebrew, Persian, Urdu and Yiddish also switch the page to right-to-left.
 - **Camera.** The portrait preview is centered. Tap the preview (or press **Check food**) to
   capture. After capture, the stream stops, the camera box hides, and the captured photo
   appears in the result card. **Check food** stays disabled until **Open camera** is tapped

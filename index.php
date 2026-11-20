@@ -515,6 +515,12 @@ $fcBuild = 'b' . (string) @filemtime(__FILE__);
   .profile-saved.show { display: block; }
   .hidden { display: none !important; }
   #previewImg { width: 100%; border-radius: 14px; display: block; margin-bottom: 12px; border: 2px solid var(--pink-border); }
+  /* Right-to-left languages (Arabic, Hebrew, Persian, Urdu, Yiddish). */
+  html[dir="rtl"] body { direction: rtl; }
+  html[dir="rtl"] .hint { border-left: none; border-right: 5px solid var(--accent); }
+  html[dir="rtl"] .badge { margin-left: 0; margin-right: 6px; }
+  html[dir="rtl"] .header-actions { margin-left: 0; margin-right: auto; }
+  html[dir="rtl"] .sheet-close { margin-left: 0; margin-right: auto; }
 </style>
 </head>
 <body>
@@ -551,6 +557,9 @@ $fcBuild = 'b' . (string) @filemtime(__FILE__);
   if (el) el.textContent = word;
   var btn = document.getElementById('btnSettings');
   if (btn) { btn.setAttribute('title', word); btn.setAttribute('aria-label', word); }
+  if ({ ar: 1, fa: 1, ur: 1, he: 1, yi: 1 }[p.language]) {
+    document.documentElement.setAttribute('dir', 'rtl');
+  }
 })();
 </script>
 <main>
@@ -604,8 +613,8 @@ $fcBuild = 'b' . (string) @filemtime(__FILE__);
     <div class="sheet-sub" data-i18n="settings.sub">Saved on this device, applied instantly. 即時生效，並儲存於此裝置。</div>
 
     <div class="set-group">
-      <div class="set-label" data-i18n="settings.language">Answer language 回應語言</div>
-      <div class="set-note" data-i18n="settings.language.note">The interface text is available in English and Chinese; other languages apply to the analysis result and the spoken answer.</div>
+      <div class="set-label" data-i18n="settings.language">App language 應用程式語言</div>
+      <div class="set-note" data-i18n="settings.language.note">The whole app, the analysis result and the spoken answer use this language.</div>
       <div class="set-opts" id="optLanguage"></div>
       <button class="set-more" type="button" data-target="optLanguage" aria-expanded="false" aria-controls="optLanguageExtra">More 更多 <span class="chev">▾</span></button>
       <div class="set-opts set-extra hidden" id="optLanguageExtra"></div>
@@ -662,6 +671,7 @@ $fcBuild = 'b' . (string) @filemtime(__FILE__);
   </div>
 </div>
 
+<script src="/ui-lang.js?v=1"></script>
 <script src="/lang.js?v=1"></script>
 <script>
 window.FC_TOKEN = <?= json_encode($fcToken['token']) ?>;
@@ -786,20 +796,20 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     { v: 'humanist', l: 'Humanist', s: '人文' }
   ];
   var SPEAKS = [
-    { v: 'on', l: 'On 開', s: 'read aloud' },
-    { v: 'off', l: 'Off 關', s: 'no speech' },
-    { v: 'en', l: 'English only', s: 'only English' },
-    { v: 'zh', l: 'Chinese only', s: 'only 中文' }
+    { v: 'on', l: 'On', s: '開' },
+    { v: 'off', l: 'Off', s: '關' },
+    { v: 'en', l: 'English only', s: '只英文' },
+    { v: 'zh', l: 'Chinese only', s: '只中文' }
   ];
   var CONDITIONS = [
-    { v: 'diabetes', l: '糖尿病', s: 'Diabetes' },
-    { v: 'heart_disease', l: '心臟病', s: 'Heart disease' },
-    { v: 'stroke', l: '中風', s: 'Stroke' },
-    { v: 'kidney_disease', l: '腎病', s: 'Kidney disease' },
-    { v: 'liver_disease', l: '肝病', s: 'Liver disease' },
-    { v: 'hypertension', l: '高血壓', s: 'High BP' },
-    { v: 'high_cholesterol', l: '高膽固醇', s: 'Cholesterol' },
-    { v: 'gout', l: '痛風', s: 'Gout' }
+    { v: 'diabetes', l: 'Diabetes', s: '糖尿病' },
+    { v: 'heart_disease', l: 'Heart disease', s: '心臟病' },
+    { v: 'stroke', l: 'Stroke', s: '中風' },
+    { v: 'kidney_disease', l: 'Kidney disease', s: '腎病' },
+    { v: 'liver_disease', l: 'Liver disease', s: '肝病' },
+    { v: 'hypertension', l: 'High blood pressure', s: '高血壓' },
+    { v: 'high_cholesterol', l: 'High cholesterol', s: '高膽固醇' },
+    { v: 'gout', l: 'Gout', s: '痛風' }
   ];
 
   // A built-in fallback so the app still works if lang.js cannot be loaded.
@@ -896,10 +906,10 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     'settings.title': { en: 'Settings', zh: '設定' },
     'settings.sub': { en: 'Saved on this device, applied instantly.', zh: '即時生效，並儲存於此裝置。' },
     'settings.close': { en: 'Close', zh: '關閉' },
-    'settings.language': { en: 'Answer language', zh: '回應語言' },
+    'settings.language': { en: 'App language', zh: '應用程式語言' },
     'settings.language.note': {
-      en: 'The interface text is available in English and Chinese. Other languages apply to the analysis result and the spoken answer.',
-      zh: '介面文字提供英文及中文。其他語言會用於分析結果及語音朗讀。'
+      en: 'The whole app, the analysis result and the spoken answer use this language.',
+      zh: '整個應用程式、分析結果及語音朗讀都會使用此語言。'
     },
     'settings.conditions': { en: 'Long-term conditions', zh: '長期病患' },
     'settings.conditions.note': { en: 'The analysis focuses on these.', zh: '分析會特別留意以上病患。' },
@@ -925,44 +935,52 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     'speak.resultFor': { en: 'Result for', zh: '結果：' }
   };
 
-  // 'both' shows the two languages side by side, otherwise one.
+  // 'both' shows English and Traditional Chinese side by side. Any other
+  // value is a real language code from ui-lang.js.
   function uiMode() {
+    return profile.language === 'both' ? 'both' : profile.language;
+  }
+
+  function uiDict() {
     var l = profile.language;
-    if (l === 'zh' || l === 'yue') return 'zh';
-    if (l === 'both') return 'both';
-    return 'en';
+    if (l === 'both') return null;
+    if (typeof FC_UI !== 'undefined' && FC_UI && FC_UI[l]) return FC_UI[l];
+    return null;
+  }
+
+  function uiTranslation(key) {
+    var d = uiDict();
+    return d && typeof d[key] === 'string' ? d[key] : '';
   }
 
   function t(key) {
+    var translated = uiTranslation(key);
+    if (translated) return translated;
     var entry = UI_I18N[key];
     if (!entry) return key;
-    if (uiMode() === 'both') return entry.en + ' / ' + entry.zh;
-    return uiMode() === 'zh' ? entry.zh : entry.en;
+    if (profile.language === 'both') return entry.en + ' / ' + entry.zh;
+    if (profile.language === 'zh' || profile.language === 'yue' || profile.language === 'zh_cn') {
+      return entry.zh;
+    }
+    return entry.en;
   }
 
-  // A label from one of the option tables, rendered in the UI language.
-  function mapLabel(map, key) {
+  // A label from one of the option tables, rendered in the app language.
+  function mapLabel(map, key, ns) {
+    var translated = ns ? uiTranslation('dyn.' + ns + '.' + key) : '';
+    if (translated) return esc(translated);
     var e = map[key] || labelFor(map, key);
-    if (uiMode() === 'both') return esc(e.en) + (e.zh ? ' / ' + esc(e.zh) : '');
-    if (uiMode() === 'zh') return esc(e.zh || e.en);
+    if (profile.language === 'both') return esc(e.en) + (e.zh ? ' / ' + esc(e.zh) : '');
+    if (profile.language === 'zh' || profile.language === 'yue' || profile.language === 'zh_cn') {
+      return esc(e.zh || e.en);
+    }
     return esc(e.en);
   }
 
   var LANGUAGES = LANGUAGE_TABLE.map(function (l) { return l.v; });
 
-  // The word under the gear follows the chosen language.
-  var SETTINGS_LABEL = {
-    zh: '設定',
-    yue: '設定',
-    zh_cn: '设置'
-  };
-
-  function settingsLabel(language) {
-    return SETTINGS_LABEL[language] || 'Settings';
-  }
-
   function updateHeaderLabels() {
-    var label = settingsLabel(profile.language);
+    var label = t('btn.settings');
     var el = $('settingsLabel');
     if (el) el.textContent = label;
     var btn = $('btnSettings');
@@ -1036,7 +1054,14 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     root.setAttribute('data-theme', profile.theme);
     root.setAttribute('data-color', profile.color);
     root.setAttribute('data-font', profile.font);
-    root.setAttribute('lang', profile.language === 'zh' ? 'zh-Hant' : 'en');
+    var htmlLang = profile.language === 'both' || profile.language === 'zh'
+      ? 'zh-Hant'
+      : profile.language === 'yue' ? 'zh-HK'
+      : profile.language === 'zh_cn' ? 'zh-Hans'
+      : profile.language.replace('_', '-');
+    root.setAttribute('lang', htmlLang);
+    var rtl = ['ar', 'fa', 'ur', 'he', 'yi'];
+    root.setAttribute('dir', rtl.indexOf(profile.language) >= 0 ? 'rtl' : 'ltr');
     root.style.setProperty('--fs', SIZE_SCALE[profile.size] || 1);
 
     applyUiLanguage();
@@ -1073,9 +1098,7 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
       var more = document.querySelector('.set-more[data-target="' + id + '"]');
       if (more) {
         more.classList.toggle('has-selection', !!selected);
-        more.title = selected
-          ? 'Currently selected: ' + (selected.getAttribute('data-label') || '')
-          : '';
+        more.title = selected ? (selected.getAttribute('data-label') || '') : '';
       }
     });
   }
@@ -1093,34 +1116,38 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
   }
 
   // ---------- Build the option buttons ----------
-  function optionLabel(opt) {
-    if (uiMode() === 'both') {
+  function optionLabel(opt, ns) {
+    if (profile.language === 'both') {
       return esc(opt.l) + (opt.s ? '<small>' + esc(opt.s) + '</small>' : '');
     }
-    if (uiMode() === 'zh') {
+    // Language names stay in their own language so people can find theirs.
+    if (ns === 'LANGUAGE') return esc(opt.l);
+    var translated = ns ? uiTranslation('opt.' + ns + '.' + opt.v) : '';
+    if (translated) return esc(translated);
+    if (profile.language === 'zh' || profile.language === 'yue' || profile.language === 'zh_cn') {
       return esc(opt.s || opt.l);
     }
     return esc(opt.l);
   }
 
-  function makeOptionButton(opt) {
+  function makeOptionButton(opt, ns) {
     var b = document.createElement('button');
     b.type = 'button';
     b.setAttribute('data-value', opt.v);
     b.setAttribute('data-label', opt.l);
     b.setAttribute('aria-pressed', 'false');
-    b.innerHTML = optionLabel(opt);
+    b.innerHTML = optionLabel(opt, ns);
     return b;
   }
 
-  function buildGroup(mainId, extraId, options, basicCount) {
+  function buildGroup(mainId, extraId, options, basicCount, ns) {
     var main = $(mainId);
     var extra = $(extraId);
     main.innerHTML = '';
     extra.innerHTML = '';
 
     options.forEach(function (opt, i) {
-      var button = makeOptionButton(opt);
+      var button = makeOptionButton(opt, ns);
       if (i < basicCount) {
         main.appendChild(button);
       } else {
@@ -1141,13 +1168,13 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
       .filter(function (l) { return l.v === 'both'; })
       .concat(LANGUAGE_TABLE.filter(function (l) { return l.v !== 'both'; }))
       .map(function (l) { return { v: l.v, l: l.l, s: l.s }; });
-    buildGroup('optLanguage', 'optLanguageExtra', languageOptions, 10);
-    buildGroup('optConditions', 'optConditionsExtra', CONDITIONS, 4);
-    buildGroup('optSize', 'optSizeExtra', SIZES, 4);
-    buildGroup('optTheme', 'optThemeExtra', THEMES, 5);
-    buildGroup('optColor', 'optColorExtra', COLORS, 4);
-    buildGroup('optFont', 'optFontExtra', FONTS, 4);
-    buildGroup('optSpeak', 'optSpeakExtra', SPEAKS, 2);
+    buildGroup('optLanguage', 'optLanguageExtra', languageOptions, 10, 'LANGUAGE');
+    buildGroup('optConditions', 'optConditionsExtra', CONDITIONS, 4, 'CONDITIONS');
+    buildGroup('optSize', 'optSizeExtra', SIZES, 4, 'SIZES');
+    buildGroup('optTheme', 'optThemeExtra', THEMES, 5, 'THEMES');
+    buildGroup('optColor', 'optColorExtra', COLORS, 4, 'COLORS');
+    buildGroup('optFont', 'optFontExtra', FONTS, 4, 'FONTS');
+    buildGroup('optSpeak', 'optSpeakExtra', SPEAKS, 2, 'SPEAKS');
     // Every group keeps a "More" button; hide it only when a group is complete.
     document.querySelectorAll('.set-more').forEach(function (btn) {
       btn.classList.remove('hidden');
@@ -1159,6 +1186,24 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     var nodes = document.querySelectorAll('[data-i18n]');
     for (var i = 0; i < nodes.length; i++) {
       nodes[i].textContent = t(nodes[i].getAttribute('data-i18n'));
+    }
+    document.title = 'Food Check · ' + t('app.title');
+    var fullscreen = $('btnFullscreen');
+    if (fullscreen) {
+      fullscreen.setAttribute('title', t('btn.fullscreen'));
+      fullscreen.setAttribute('aria-label', t('btn.fullscreen'));
+    }
+    var camBox2 = $('camBox');
+    if (camBox2) camBox2.setAttribute('aria-label', t('camera.aria'));
+    var closeBtn = $('btnCloseSettings');
+    if (closeBtn) {
+      closeBtn.setAttribute('title', t('settings.close'));
+      closeBtn.setAttribute('aria-label', t('settings.close'));
+    }
+    var moreNodes = document.querySelectorAll('.set-more');
+    for (var j = 0; j < moreNodes.length; j++) {
+      var open = moreNodes[j].getAttribute('aria-expanded') === 'true';
+      moreNodes[j].firstChild.nodeValue = t(open ? 'settings.less' : 'settings.more') + ' ';
     }
     buildSettingsUI();
   }
@@ -1567,12 +1612,12 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     out.push({
       lang: 'en-US',
       part: 'en',
-      text: (j.dish ? t('speak.resultFor') + ' ' + j.dish + '. ' : '') + mapLabel(VERDICT, j.overall) + '. ' + (j.overall_en || '')
+      text: (j.dish ? t('speak.resultFor') + ' ' + j.dish + '. ' : '') + mapLabel(VERDICT, j.overall, 'verdict') + '. ' + (j.overall_en || '')
     });
     out.push({
       lang: 'zh-HK',
       part: 'zh',
-      text: (j.dish_zh ? j.dish_zh + '。' : '') + mapLabel(VERDICT, j.overall) + '。' + (j.overall_zh || '')
+      text: (j.dish_zh ? j.dish_zh + '。' : '') + mapLabel(VERDICT, j.overall, 'verdict') + '。' + (j.overall_zh || '')
     });
 
     var items = Array.isArray(j.items) ? j.items : [];
@@ -1750,7 +1795,9 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
       var reasonZh = j.warning_zh || j.overall_zh || '';
       var reason = uiMode() === 'both'
         ? (reasonEn ? esc(reasonEn) : '') + (reasonEn && reasonZh ? ' / ' : '') + (reasonZh ? esc(reasonZh) : '')
-        : (uiMode() === 'zh' ? (reasonZh ? esc(reasonZh) : esc(reasonEn)) : esc(reasonEn || reasonZh));
+        : ((profile.language === 'zh' || profile.language === 'yue' || profile.language === 'zh_cn')
+          ? (reasonZh ? esc(reasonZh) : esc(reasonEn))
+          : esc(reasonEn || reasonZh));
       if (!reason) reason = esc(t('result.notFood'));
       html += '<div class="not-food" role="alert">'
         + '<svg class="big-cross" viewBox="0 0 100 100" aria-hidden="true">'
@@ -1761,7 +1808,7 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
     } else if (j && j.items) {
       var ov = VERDICT[j.overall] || VERDICT.caution;
       html += '<div class="verdict v-' + ov.cls + '">' + (ov.cls === 'green' ? '✅' : ov.cls === 'orange' ? '⚠️' : '🚫')
-        + ' ' + mapLabel(VERDICT, j.overall) + '</div>'
+        + ' ' + mapLabel(VERDICT, j.overall, 'verdict') + '</div>'
         + '<div style="margin-bottom:12px">' + bi(j.overall_en, j.overall_zh) + '</div>';
 
       var types = Array.isArray(j.food_types) ? j.food_types.slice() : [];
@@ -1776,7 +1823,7 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
         html += '<div class="label">' + esc(t('result.foodTypes')) + '</div><div class="chips">';
         types.forEach(function (key) {
           var c = CATEGORY[key] || labelFor(CATEGORY, key);
-          html += '<span class="chip cat">' + (c.icon || '🍽️') + ' ' + mapLabel(CATEGORY, key) + '</span>';
+          html += '<span class="chip cat">' + (c.icon || '🍽️') + ' ' + mapLabel(CATEGORY, key, 'category') + '</span>';
         });
         html += '</div>';
       }
@@ -1792,7 +1839,7 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
       if (allergens.length) {
         html += '<div class="allergy-warning" role="alert"><strong>🚨 ' + esc(t('result.allergens')) + '</strong><div class="chips">';
         allergens.forEach(function (key) {
-          html += '<span class="chip allergen">' + mapLabel(ALLERGEN, key) + '</span>';
+          html += '<span class="chip allergen">' + mapLabel(ALLERGEN, key, 'allergen') + '</span>';
         });
         html += '</div><div class="allergy-sub">' + esc(t('result.allergenNote')) + '</div></div>';
       }
@@ -1804,8 +1851,8 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
           var lvl = HEALTH_LEVEL[note.level] || HEALTH_LEVEL.caution;
           html += '<div class="health-item">'
             + '<div class="health-head"><span class="health-cond">'
-            + mapLabel(CONDITION, note.condition) + '</span>'
-            + '<span class="badge b-' + lvl.cls + '">' + mapLabel(HEALTH_LEVEL, note.level) + '</span></div>'
+            + mapLabel(CONDITION, note.condition, 'condition') + '</span>'
+            + '<span class="badge b-' + lvl.cls + '">' + mapLabel(HEALTH_LEVEL, note.level, 'health_level') + '</span></div>'
             + '<div class="health-reason">' + bi(note.reason_en, note.reason_zh) + '</div>'
             + '</div>';
         });
@@ -1840,7 +1887,7 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
           hazardHtml = '<div class="chip-row"><span class="chip-label">'
             + esc(t('result.hazards')) + '</span>';
           hazards.forEach(function (key) {
-            hazardHtml += '<span class="chip hazard">' + mapLabel(HAZARD, key) + '</span>';
+            hazardHtml += '<span class="chip hazard">' + mapLabel(HAZARD, key, 'hazard') + '</span>';
           });
           hazardHtml += '</div>';
         }
@@ -1851,7 +1898,7 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
           allergenHtml = '<div class="chip-row"><span class="chip-label">'
             + esc(t('result.allergensShort')) + '</span>';
           itemAllergens.forEach(function (key) {
-            allergenHtml += '<span class="chip allergen">' + mapLabel(ALLERGEN, key) + '</span>';
+            allergenHtml += '<span class="chip allergen">' + mapLabel(ALLERGEN, key, 'allergen') + '</span>';
           });
           allergenHtml += '</div>';
         }
@@ -1859,9 +1906,9 @@ window.FC_TOKEN_EXP = <?= (int) $fcToken['expires_at'] ?>;
         var nameMain = it.name || it.name_zh || '';
         var nameSub = (it.name && it.name_zh) ? it.name_zh : '';
         html += '<div class="item">'
-          + '<div class="name">' + esc(nameMain) + '<span class="badge b-' + v.cls + '">' + mapLabel(VERDICT, it.verdict) + '</span></div>'
+          + '<div class="name">' + esc(nameMain) + '<span class="badge b-' + v.cls + '">' + mapLabel(VERDICT, it.verdict, 'verdict') + '</span></div>'
           + (nameSub ? '<div class="zh">' + esc(nameSub) + '</div>' : '')
-          + '<div class="item-cat">' + (cat.icon || '🍽️') + ' ' + mapLabel(CATEGORY, it.category) + '</div>'
+          + '<div class="item-cat">' + (cat.icon || '🍽️') + ' ' + mapLabel(CATEGORY, it.category, 'category') + '</div>'
           + (it.texture ? '<div class="detail">' + esc(t('result.texture')) + ': ' + bi(it.texture, it.texture_zh) + '</div>' : '')
           + (it.risk ? '<div class="detail">' + esc(t('result.risk')) + ': ' + bi(it.risk, it.risk_zh) + '</div>' : '')
           + hazardHtml
