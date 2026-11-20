@@ -78,9 +78,6 @@ function fc_build_messages(string $level, array $prefs = []): array
         . 'List possible allergens using only these keys: milk, egg, fish, shellfish, peanut, tree_nut, soy, wheat, sesame. '
         . 'Only include hazards and allergens that are plausible from the photo; they are possibilities, not confirmed. Use empty arrays when none are plausible. '
         . 'Do not invent ingredients or allergens. Return at most 8 items, with at most 4 hazards and 4 allergens per item. '
-        . 'Add general, non-diagnostic health notes for common long-term conditions: diabetes, heart_disease, stroke, kidney_disease, liver_disease, hypertension, high_cholesterol, gout. '
-        . 'Only include a condition when the visible ingredients or cooking style suggest a plausible concern. Use level "caution" or "avoid"; use "unknown" only when the photo is insufficient. '
-        . 'Omit conditions with no concern. Use may or could, never diagnose. Return at most 5 notes with short reason_en and reason_zh. '
         . 'For each, estimate hardness/texture (hard, firm, soft, mushy, liquid, mixed with hard bits...), '
         . 'chewing/swallowing risk (e.g. dry, crumbly, sticky, stringy, mixed texture, hard pieces, skin, seeds, bones), '
         . 'and a verdict. Be conservative: when unsure, downgrade to caution. '
@@ -99,10 +96,15 @@ function fc_build_messages(string $level, array $prefs = []): array
         $system .= 'The person has these long-term health conditions: ' . implode(', ', $labels) . '. '
             . 'Give health notes ONLY for these conditions, and make the safer-food suggestions specifically relevant to them '
             . '(for example salt, sugar, oil, purines, potassium, sodium or fluid). '
-            . 'If the food is fine for their condition, you may omit that condition. ';
+            . 'Only include a condition when the visible ingredients or cooking style suggest a plausible concern. '
+            . 'Use level "caution" or "avoid"; use "unknown" only when the photo is insufficient. '
+            . 'Omit conditions with no concern. Use may or could, never diagnose. '
+            . 'Return at most 5 notes with short reason_en and reason_zh. ';
     } else {
         $system .= 'The person has not selected any long-term condition. '
-            . 'Do not include any health notes at all: return an empty health_notes array. ';
+            . 'Do not write any health notes: return "health_notes": []. '
+            . 'Do not mention diabetes, heart disease, stroke, kidney disease, liver disease, '
+            . 'high blood pressure, high cholesterol or gout anywhere in the answer. ';
     }
 
     $system .= 'IMPORTANT: reply with ONLY a JSON object, no markdown fences, matching exactly: ';
@@ -887,7 +889,10 @@ try {
         $primaryPayload['chat_template_kwargs'] = ['enable_thinking' => false];
     }
     if ($singleLanguage) {
-        $primaryPayload['max_tokens'] = min(4096, (int) $config['max_tokens'] + 1024);
+        // Reasoning happens before the JSON answer and can easily run to
+        // several thousand tokens. Give it room so the JSON is not truncated
+        // mid-object (which used to return an empty result with ok=true).
+        $primaryPayload['max_tokens'] = max((int) $config['max_tokens'] + 1024, 8192);
     }
 
     $primaryProvider = [

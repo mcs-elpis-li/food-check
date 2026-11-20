@@ -146,17 +146,24 @@ applied to the model output and the speech; the panel states this explicitly.
 
 ### How the settings reach the model
 
-The answer language and the selected conditions are sent with every request and change the
-prompt:
+Three settings are part of the request and change the prompt on every analysis:
 
-- **Language** - the model is told to write the whole answer in that language and to leave
-  the other language's fields empty. (The model needs its reasoning mode enabled to follow
-  this reliably, so single-language answers use a slightly larger output budget.)
-- **Conditions** - the model is told which long-term conditions the person has, is told to
-  give health notes only for those, and is asked to make the safer-food suggestions
-  relevant to them (salt, sugar, oil, purines, potassium, sodium, fluid). If no condition is
-  selected, no health notes are returned at all; any note for a condition that was not
-  selected is also discarded on the server, so the panel only ever shows the chosen ones.
+| Setting | What it changes in the prompt |
+| --- | --- |
+| **Diet level (IDDSI)** | The person's level is written into the system message and the user message (`Soft (IDDSI 6-7: ...) / 軟食（...）`), and the safer-food suggestions are aimed at that level. |
+| **Answer language** | A final `LANGUAGE:` instruction names the requested language and says which fields to fill (`_en` or `_zh`) and which to leave empty. `Both` asks for English and Traditional Chinese in every pair of fields. |
+| **Long-term conditions** | The chosen conditions are listed in the system message and the user message. The model is told to write health notes **only** for those, and to make the safer-food advice relevant to them (salt, sugar, oil, purines, potassium, sodium, fluid). With none selected, the prompt explicitly forbids health notes and names no condition. |
+
+- The prompt is rebuilt for every request; the exact text is stored in the `prompt` field of
+  the log, so any change can be audited with `/log`.
+- **Theme, text colour, font, text size and speech** are display and speech settings. They are
+  never sent to the model and do not change the prompt by design.
+- Single-language answers need the model's reasoning mode enabled, otherwise it answers in
+  English. Reasoning runs before the JSON, so those requests get an 8,192-token output budget
+  (the default 2,048 can be consumed entirely by reasoning and truncate the JSON).
+- If no condition is selected, no health notes are returned at all; any note for a condition
+  that was not selected is also discarded on the server, so the panel only ever shows the
+  chosen ones.
 
 ### How the settings are stored
 
